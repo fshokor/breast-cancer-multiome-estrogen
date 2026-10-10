@@ -1,0 +1,13 @@
+score	qc_metric	spearman_rho
+S_score	rna_total_counts	-0.1039135
+S_score	rna_n_genes	-0.01733659
+S_score	rna_pct_counts_mt	-0.001041999
+G2M_score	rna_total_counts	-0.02864877
+G2M_score	rna_n_genes	0.07143344
+G2M_score	rna_pct_counts_mt	0.004449183
+estrogen_score	rna_total_counts	-0.08113411
+estrogen_score	rna_n_genes	-0.03075402
+estrogen_score	rna_pct_counts_mt	-0.03903167
+upr_score	rna_total_counts	0.1657109
+upr_score	rna_n_genes	0.1660864
+upr_score	rna_pct_counts_mt	0.2687433

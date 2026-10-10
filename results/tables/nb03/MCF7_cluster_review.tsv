@@ -1,0 +1,10 @@
+leiden	median_rna_total_counts	median_rna_n_genes	median_rna_pct_counts_mt	n_cells	E2	Vehicle	fraction_E2	mean_S_score	mean_G2M_score	mean_estrogen_score	mean_upr_score	highest_relative_program	highest_relative_program_z	annotation_status	top_markers	min_best_jaccard
+0	6971	3046.5	17.71505	1206	1203	3	0.9975124	-0.1417423	-0.09506613	0.2634415	0.1971216	estrogen_score	0.96144	unassigned; review markers and programs	PGR;GREB1;KCNQ5;FMN1;TFF1	0.8714597
+1	4751	2501	17.60773	177	89	88	0.5028249	-0.07408727	0.2339505	0.1262593	0.204682	G2M_score	0.6598431	unassigned; review markers and programs	PTTG1;CCNB1;HMMR;STMN1;HIST1H2BD	0.1519608
+2	9915.5	3909.5	18.6631	452	444	8	0.9823009	-0.04671089	0.694719	0.2223836	0.210828	G2M_score	2.226909	unassigned; review markers and programs	PIF1;KIF14;FAM83D;PRR11;HMMR	0.2380952
+3	7935.5	3385.5	17.75786	1262	1249	13	0.9896989	0.2337652	0.1996651	0.2367093	0.2004291	S_score	1.413601	unassigned; review markers and programs	MIR924HG;FAM111B;HELLS;ATAD2;CENPP	0.5298689
+4	9039	3440	18.87492	2179	80	2099	0.03671409	-0.2097115	-0.1675408	0.1438762	0.1460166	upr_score	-0.4866874	unassigned; review markers and programs	FGF12;PBX1;DLG2;ATXN1;ARL15	0.5493346
+5	10854.5	4100	18.1807	354	14	340	0.03954802	0.142394	0.3719826	0.1148113	0.1536709	G2M_score	1.129288	unassigned; review markers and programs	MIR924HG;CIT;BUB1B;POLQ;DIAPH3	0.1576293
+6	8524	3289	20.82327	255	126	129	0.4941176	-0.1681225	-0.1124079	0.07874944	0.3231853	upr_score	1.845097	unassigned; review markers and programs	AL138828.1;GDF15;HRK;DDIT3;NOS3	0.5752427
+7	16012	5350	15.98279	107	72	35	0.6728972	-0.007143939	0.04576794	0.2490805	0.1942879	estrogen_score	0.7739069	unassigned; review markers and programs	LINC01087;AL442636.1;AC093838.1;XIST;EMCN	0.9907407
+8	11329	3781	14.57003	27	12	15	0.4444444	-0.1642468	0.1768846	0.08572472	0.1290065	G2M_score	0.465763	unassigned; review markers and programs	TEKT1;FOXJ1;FOXN4;SERPINI2;ADGB	1

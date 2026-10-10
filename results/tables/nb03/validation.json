@@ -1,0 +1,11 @@
+{
+  "notebook": "nb03_cluster_characterization.ipynb",
+  "executed_locally": true,
+  "colab_drive_mount_tested": false,
+  "new_tests_passed": 2,
+  "real_data_checks": "passed",
+  "nb02_inputs_unchanged": true,
+  "cell_ids_clusters_umap_preserved": true,
+  "full_project_tests_passed": 17,
+  "figure_visual_review": "marker, QC, state-score and sensitivity figures checked"
+}

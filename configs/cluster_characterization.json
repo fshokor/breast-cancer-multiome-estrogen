@@ -1,0 +1,25 @@
+{
+  "normalize_total": 10000,
+  "random_state": 42,
+  "marker_method": "wilcoxon",
+  "tie_correct": true,
+  "marker_min_pct": 0.1,
+  "marker_min_pct_difference": 0.1,
+  "marker_min_log2fc": 0.25,
+  "marker_max_adjusted_p": 0.05,
+  "top_markers_per_cluster": 50,
+  "plot_markers_per_cluster": 3,
+  "resolutions": [
+    0.3,
+    0.5,
+    0.8
+  ],
+  "seeds": [
+    42,
+    7,
+    123
+  ],
+  "leiden_iterations": 2,
+  "signature_ctrl_size": 50,
+  "signature_n_bins": 25
+}

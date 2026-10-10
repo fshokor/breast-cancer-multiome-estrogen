@@ -50,8 +50,8 @@ the final filename. Move a corrupt archive aside before rerunning.
 Raw data and environments are ignored by Git.
 
 ## Colab + Google Drive
-Upload only nb00_colab_setup.ipynb and nb01_data_inspection.ipynb to Colab and run in order.
-Both notebooks contain generated copies of the canonical scripts, so a remote repository
+Upload the available nb00–nb03 notebooks to Colab and run in order.
+The notebooks contain generated copies of the canonical scripts, so a remote repository
 and manual source-file uploads are unnecessary. They mount Drive and use:
 
     /content/drive/MyDrive/breast-cancer-multiome-estrogen
@@ -82,8 +82,8 @@ After editing canonical source, regenerate notebooks:
 | nb00 | Colab setup + GEO download |
 | nb01 | Data inspection and paired-cell verification |
 | nb02 | Scanpy QC, paired preprocessing, RNA PCA/Leiden/UMAP |
-| nb03 (future) | RNA differential expression |
-| nb04 (future) | RNA GSEA |
+| nb03 | Cluster markers, quality, sensitivity and cell-state review |
+| nb04 (future) | E2 versus Vehicle RNA DEG + GSEA |
 | nb05 (future) | ATAC differential accessibility |
 | nb06 (future) | ATAC regulatory/motif analysis |
 | nb07 (future) | RNA–ATAC pathway concordance |
@@ -96,10 +96,10 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00, nb01 and nb02 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb03 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
-scMKL is not installed. No differential expression, enrichment, motif analysis or predictive modeling has been run.
+scMKL is not installed. nb03 ranks descriptive cluster markers. No treatment differential expression, GSEA, motif analysis or predictive modeling has been run.
 The roadmap can change.
 
 ## Validation
@@ -115,3 +115,8 @@ RNA QC thresholds in Kupp et al. (2025), DOI 10.1038/s42003-025-08533-7.
 It also produces RNA PCA, Leiden clusters and UMAP with explicit exploratory settings.
 See [the QC guide](QC_PREPROCESSING.md) for the distinction between the paper's
 standard workflow and scMKL model preprocessing, saved layers, and reproducibility limits.
+
+## Cluster characterization
+Use [nb03](notebooks/nb03_cluster_characterization.ipynb) after nb02.
+See [the characterization guide](CLUSTER_CHARACTERIZATION.md) for marker tests,
+reference signatures, outputs and interpretation limits.
