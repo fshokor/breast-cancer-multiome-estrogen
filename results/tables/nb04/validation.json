@@ -1,0 +1,11 @@
+{
+  "executed_locally": true,
+  "colab_drive_mount_tested": false,
+  "new_tests_passed": 2,
+  "all_tested_genes_in_GSEA": true,
+  "nb02_inputs_unchanged": true,
+  "replicate_supported_inference": false,
+  "real_data_validation": "passed",
+  "full_project_tests_passed": 19,
+  "figures_reviewed": true
+}

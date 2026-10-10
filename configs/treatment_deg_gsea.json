@@ -1,0 +1,17 @@
+{
+  "normalization_target": 10000,
+  "min_detection_fraction_either_condition": 0.05,
+  "min_detected_cells": 10,
+  "de_method": "wilcoxon",
+  "tie_correct": true,
+  "exploratory_adjusted_p": 0.05,
+  "exploratory_abs_log2fc": 0.5,
+  "gsea_ranking": "signed Wilcoxon score, E2 versus Vehicle",
+  "gsea_min_size": 15,
+  "gsea_max_size": 500,
+  "gsea_permutations": 1000,
+  "gsea_weight": 1,
+  "gsea_seed": 42,
+  "gsea_threads": 1,
+  "gsea_fdr_display": 0.05
+}

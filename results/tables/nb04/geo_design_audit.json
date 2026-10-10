@@ -1,0 +1,83 @@
+{
+  "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/soft/GSE154873_family.soft.gz",
+  "sha256": "b5f4581d3080c5b4a455885e07cb0ca462a1b7a8a5151fca123eb92687377d5e",
+  "multiome_sample_records": [
+    {
+      "accession": "GSM6418443",
+      "fields": [
+        "!Sample_title = Breast cancer cells - MCF7 and T47D multiomic/GEX, si_Control_plus_E2",
+        "!Sample_source_name_ch1 = Breast cancer cell line",
+        "!Sample_characteristics_ch1 = treatment: Estrogen Treatment",
+        "!Sample_characteristics_ch1 = cell line: MCF-7 and T-47D",
+        "!Sample_characteristics_ch1 = tag: multiomic (scRNA and scATAC)",
+        "!Sample_data_processing = Aligning and gene counting with CellRanger version 3.0.2",
+        "!Sample_data_processing = Filtering quality cells with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Demultiplexing cell identity with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Clustering and Differential Expression with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Topic Modeling Analysis with TITAN",
+        "!Sample_data_processing = Enriched genes were tested for significance of overlap with the cistrome database ChIP-seq human factor binding for T4D, MCF7 and ZR-75-1",
+        "!Sample_data_processing = Assembly: hg38",
+        "!Sample_relation = BioSample: https://www.ncbi.nlm.nih.gov/biosample/SAMN30052214",
+        "!Sample_relation = SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRX16732257"
+      ]
+    },
+    {
+      "accession": "GSM6418444",
+      "fields": [
+        "!Sample_title = Breast cancer cells - MCF7 and T47D multiomic/GEX, si_Control_plus_Veh",
+        "!Sample_source_name_ch1 = Breast cancer cell line",
+        "!Sample_characteristics_ch1 = treatment: vehicle",
+        "!Sample_characteristics_ch1 = cell line: MCF-7 and T-47D",
+        "!Sample_characteristics_ch1 = tag: multiomic (scRNA and scATAC)",
+        "!Sample_data_processing = Aligning and gene counting with CellRanger version 3.0.2",
+        "!Sample_data_processing = Filtering quality cells with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Demultiplexing cell identity with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Clustering and Differential Expression with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Topic Modeling Analysis with TITAN",
+        "!Sample_data_processing = Enriched genes were tested for significance of overlap with the cistrome database ChIP-seq human factor binding for T4D, MCF7 and ZR-75-1",
+        "!Sample_data_processing = Assembly: hg38",
+        "!Sample_relation = BioSample: https://www.ncbi.nlm.nih.gov/biosample/SAMN30052215",
+        "!Sample_relation = SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRX16732258"
+      ]
+    },
+    {
+      "accession": "GSM6418445",
+      "fields": [
+        "!Sample_title = Breast cancer cells - MCF7 and T47D multiomic/ATAC, si_Control_plus_E2",
+        "!Sample_source_name_ch1 = Breast cancer cell line",
+        "!Sample_characteristics_ch1 = treatment: Estrogen Treatment",
+        "!Sample_characteristics_ch1 = cell line: MCF-7 and T-47D",
+        "!Sample_characteristics_ch1 = tag: multiomic (scRNA and scATAC)",
+        "!Sample_data_processing = Aligning and gene counting with CellRanger version 3.0.2",
+        "!Sample_data_processing = Filtering quality cells with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Demultiplexing cell identity with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Clustering and Differential Expression with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Topic Modeling Analysis with TITAN",
+        "!Sample_data_processing = Enriched genes were tested for significance of overlap with the cistrome database ChIP-seq human factor binding for T4D, MCF7 and ZR-75-1",
+        "!Sample_data_processing = Assembly: hg38",
+        "!Sample_relation = BioSample: https://www.ncbi.nlm.nih.gov/biosample/SAMN30052216",
+        "!Sample_relation = SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRX16732259"
+      ]
+    },
+    {
+      "accession": "GSM6418446",
+      "fields": [
+        "!Sample_title = Breast cancer cells - MCF7 and T47D multiomic/ATAC, si_Control_plus_Veh",
+        "!Sample_source_name_ch1 = Breast cancer cell line",
+        "!Sample_characteristics_ch1 = treatment: vehicle",
+        "!Sample_characteristics_ch1 = cell line: MCF-7 and T-47D",
+        "!Sample_characteristics_ch1 = tag: multiomic (scRNA and scATAC)",
+        "!Sample_data_processing = Aligning and gene counting with CellRanger version 3.0.2",
+        "!Sample_data_processing = Filtering quality cells with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Demultiplexing cell identity with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Clustering and Differential Expression with Seurat (v 3.1.1)",
+        "!Sample_data_processing = Topic Modeling Analysis with TITAN",
+        "!Sample_data_processing = Enriched genes were tested for significance of overlap with the cistrome database ChIP-seq human factor binding for T4D, MCF7 and ZR-75-1",
+        "!Sample_data_processing = Assembly: hg38",
+        "!Sample_relation = BioSample: https://www.ncbi.nlm.nih.gov/biosample/SAMN30052217",
+        "!Sample_relation = SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRX16732260"
+      ]
+    }
+  ],
+  "conclusion": "One submitted GEX library per condition jointly containing MCF7/T47D; no biological replicate mapping in cell metadata. ATAC is the paired modality, not replication. Exploratory cell-level inference only."
+}

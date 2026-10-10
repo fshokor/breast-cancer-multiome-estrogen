@@ -131,7 +131,7 @@ No cells were discarded to obtain these matches.
 The initial inspection above preceded QC. The subsequent paper-guided QC milestone
 is implemented in nb02_qc_preprocessing.ipynb; see QC_PREPROCESSING.md and
 results/tables/paper_qc_summary.json for the resulting dimensions.
-DE, GSEA, differential ATAC, motif analysis, scMKL, MultiVI and prediction have not run.
+At that QC milestone, downstream analyses had not run. nb03 later added cluster characterization, and nb04 added exploratory treatment DEG and GSEA; see the follow-up notes.
 
 ### Follow-up provenance note
 Kupp et al. (2025), DOI 10.1038/s42003-025-08533-7, describes this dataset as a
@@ -144,3 +144,6 @@ nb02 now uses Scanpy QC/transformations and independently fits RNA PCA, Leiden
 clusters and UMAP for each cell line. These exploratory fits are separate from
 the paper-QC count/log1p representation and do not constitute cell-type annotation
 or ATAC/joint embeddings. See QC_PREPROCESSING.md for exact settings and validation.
+
+### nb04 replicate audit
+The GEO family SOFT records identify GSM6418443 and GSM6418444 as the E2 and Vehicle multiomic/GEX libraries, each containing both cell lines. GSM6418445/6 are the paired ATAC libraries. No biological replicate-to-cell mapping is supplied. nb04 therefore performs exploratory cell-level treatment DEG and preranked GSEA; it does not claim replicated treatment inference. See TREATMENT_DEG_GSEA.md and results/tables/nb04/geo_design_audit.json.
