@@ -11,3 +11,4 @@ ipykernel
 gseapy
 statsmodels
 scvi-tools
+igraph

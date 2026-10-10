@@ -18,3 +18,4 @@ dependencies:
     - gseapy
     - statsmodels
     - scvi-tools
+    - igraph

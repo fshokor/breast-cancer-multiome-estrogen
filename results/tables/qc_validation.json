@@ -2,9 +2,15 @@
   "notebook": "nb02_qc_preprocessing.ipynb",
   "executed_locally": true,
   "colab_drive_mount_tested": false,
-  "tests_passed": 14,
+  "tests_passed": 15,
   "real_data_roundtrip": "passed",
   "raw_counts_preserved": true,
   "paired_cell_order": "exact",
-  "full_dense_matrix_created": false
+  "full_all_gene_dense_matrix_created": false,
+  "bounded_hvg_dense_matrix": true,
+  "scanpy_visualizations": "passed",
+  "previous_qc_comparison": {
+    "MCF7": "Exact retained cells and genes match previous custom implementation",
+    "T47D": "Exact retained cells and genes match previous custom implementation"
+  }
 }

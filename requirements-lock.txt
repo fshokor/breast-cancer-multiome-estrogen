@@ -41,6 +41,7 @@ h5py==3.16.0
 httpcore==1.0.9
 httpx==0.28.1
 idna==3.20
+igraph==1.0.0
 interface_meta==2.0.1
 ipykernel==7.4.0
 ipython==9.17.1
@@ -150,6 +151,7 @@ sympy==1.14.0
 tensorboard==2.21.0
 tensorboard-data-server==0.7.2
 terminado==0.18.1
+texttable==1.7.0
 threadpoolctl==3.7.0
 tinycss2==1.5.1
 torch==2.14.1+cpu

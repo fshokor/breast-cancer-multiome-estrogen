@@ -81,7 +81,7 @@ After editing canonical source, regenerate notebooks:
 |---|---|
 | nb00 | Colab setup + GEO download |
 | nb01 | Data inspection and paired-cell verification |
-| nb02 | Paper-guided QC and paired preprocessing |
+| nb02 | Scanpy QC, paired preprocessing, RNA PCA/Leiden/UMAP |
 | nb03 (future) | RNA differential expression |
 | nb04 (future) | RNA GSEA |
 | nb05 (future) | ATAC differential accessibility |
@@ -96,10 +96,10 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00, nb01 and nb02 are available. nb02 applies the published RNA QC thresholds,
-preserves paired ATAC cells, and writes sparse AnnData objects.
+nb00, nb01 and nb02 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
-scMKL is not installed. No downstream biological analysis or modeling has been run.
+scMKL is not installed. No differential expression, enrichment, motif analysis or predictive modeling has been run.
 The roadmap can change.
 
 ## Validation
@@ -109,8 +109,9 @@ the workflow tests, and executes both notebooks locally against the downloaded
 files. The executed notebooks and results/tables/validation.json retain evidence.
 The live Colab Drive authorization step is not tested by local execution.
 
-## Paper-guided QC
+## Scanpy QC and RNA visualization
 Use notebooks/nb02_qc_preprocessing.ipynb after inspection. It follows the three
 RNA QC thresholds in Kupp et al. (2025), DOI 10.1038/s42003-025-08533-7.
+It also produces RNA PCA, Leiden clusters and UMAP with explicit exploratory settings.
 See [the QC guide](QC_PREPROCESSING.md) for the distinction between the paper's
 standard workflow and scMKL model preprocessing, saved layers, and reproducibility limits.

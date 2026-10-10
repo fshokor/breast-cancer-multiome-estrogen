@@ -1,9 +1,12 @@
-"""Paper-guided RNA QC and paired sparse preprocessing, without downstream analysis."""
+"""Scanpy QC, paired preprocessing, and exploratory RNA PCA/Leiden/UMAP."""
 import gc
 import gzip
 import hashlib
 import json
 import warnings
+import copy
+import importlib.metadata
+import scanpy as sc
 from array import array
 from datetime import datetime, timezone
 from pathlib import Path
@@ -69,45 +72,49 @@ def read_metadata(path, expected_cells, cell_line):
     frame["global_cell_id"] = cell_line + ":" + frame.index
     return frame
 
+
 def rna_qc(counts, genes, config):
-    """One-pass gene-first filtering; boundaries follow the paper's inequalities."""
-    gene_detected = np.asarray((counts > 0).sum(axis=0)).ravel()
-    gene_keep = gene_detected >= config["min_cells_per_gene"]
-    selected = counts[:, gene_keep].tocsr()
-    mt = np.array([str(g).startswith(config["mitochondrial_prefix"]) for g in genes])
-    if not mt.any():
+    """Use Scanpy QC and filter APIs, preserving the documented gene-first order."""
+    original = ad.AnnData(X=counts, var=pd.DataFrame(index=genes))
+    original.var["mt"] = original.var_names.str.startswith(config["mitochondrial_prefix"])
+    if not original.var["mt"].any():
         raise ValueError("No mitochondrial genes detected; verify gene naming before QC.")
-    total_before = np.asarray(counts.sum(axis=1)).ravel()
-    total = np.asarray(selected.sum(axis=1)).ravel()
-    detected = np.diff(selected.indptr)
-    mitochondrial = np.asarray(selected[:, mt[gene_keep]].sum(axis=1)).ravel()
-    pct_mt = np.divide(100.0 * mitochondrial, total, out=np.full(total.shape, np.nan),
-                       where=total > 0)
-    keep_genes = detected >= config["min_genes_per_cell"]
+    sc.pp.calculate_qc_metrics(original, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True)
+    gene_keep, gene_detected = sc.pp.filter_genes(
+        original, min_cells=config["min_cells_per_gene"], inplace=False)
+    selected = original[:, gene_keep].copy()
+    sc.pp.calculate_qc_metrics(selected, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True)
+    keep_genes, _ = sc.pp.filter_cells(
+        selected, min_genes=config["min_genes_per_cell"], inplace=False)
+    pct_mt = selected.obs["pct_counts_mt"].to_numpy()
     keep_mt = np.isfinite(pct_mt) & (pct_mt <= config["max_pct_mitochondrial"])
-    keep = keep_genes & keep_mt
     qc = pd.DataFrame({
-        "rna_total_counts_before_gene_filter": total_before,
-        "rna_n_genes_before_gene_filter": np.diff(counts.indptr),
-        "rna_total_counts": total, "rna_n_genes": detected, "rna_pct_counts_mt": pct_mt,
-        "pass_min_genes": keep_genes, "pass_max_pct_mt": keep_mt, "pass_rna_qc": keep})
+        "rna_total_counts_before_gene_filter": original.obs["total_counts"].to_numpy(),
+        "rna_n_genes_before_gene_filter": original.obs["n_genes_by_counts"].to_numpy(),
+        "rna_total_counts": selected.obs["total_counts"].to_numpy(),
+        "rna_n_genes": selected.obs["n_genes_by_counts"].to_numpy(),
+        "rna_pct_counts_mt": pct_mt,
+        "pass_min_genes": keep_genes, "pass_max_pct_mt": keep_mt,
+        "pass_rna_qc": keep_genes & keep_mt})
     var = pd.DataFrame({"n_cells_detected_before_qc": gene_detected,
-                        "pass_min_cells": gene_keep, "mt": mt}, index=genes)
-    return keep, gene_keep, qc, var
+                        "pass_min_cells": gene_keep,
+                        "mt": original.var["mt"].to_numpy()}, index=genes)
+    return keep_genes & keep_mt, gene_keep, qc, var
+
 
 def sparse_log_and_scale(counts, ddof=1):
-    """Centered z-scores represented as sparse scaled values minus offsets."""
-    log = counts.astype(np.float32)
-    np.log1p(log.data, out=log.data)
-    mean = np.asarray(log.mean(axis=0, dtype=np.float64)).ravel()
-    second = np.asarray(log.astype(np.float64).power(2).mean(axis=0)).ravel()
-    variance = np.maximum(second - mean**2, 0)
-    if log.shape[0] <= ddof:
+    """Use Scanpy log1p/scale; store centering offsets to keep all-gene data sparse."""
+    if ddof != 1:
+        raise ValueError("This workflow uses Scanpy's sample-standard-deviation scaling.")
+    if counts.shape[0] <= 1:
         raise ValueError("Too few cells to estimate scaling variance.")
-    std = np.sqrt(variance * log.shape[0] / (log.shape[0] - ddof))
-    std[std == 0] = 1
-    scaled = log.multiply(1 / std).astype(np.float32).tocsr()
-    return log, scaled, mean, std
+    transformed = ad.AnnData(X=counts.astype(np.float64))
+    sc.pp.log1p(transformed)
+    log = transformed.X.copy()
+    sc.pp.scale(transformed, zero_center=False, max_value=None)
+    if not np.isfinite(transformed.X.data).all():
+        raise ValueError("Scanpy scaling returned nonfinite values.")
+    return log.astype(np.float32), transformed.X.astype(np.float32).tocsr(), transformed.var["mean"].to_numpy(), transformed.var["std"].to_numpy()
 
 def centered_scaled_block(adata, rows, columns):
     """Materialize only an explicitly requested small block of centered z-scores."""
@@ -148,6 +155,80 @@ def qc_figure(qc, cell_line, config, output):
     fig.suptitle(f"{cell_line}: paper-guided QC; ATAC follows the same cell mask")
     fig.savefig(output, dpi=160)
     plt.close(fig)
+
+
+def visualize_rna(rna, root, cell_line, config):
+    """Fit RNA-only descriptive embeddings; treatment labels do not enter fitting."""
+    settings = config["visualization"]
+    seed = settings["random_state"]
+    viz = ad.AnnData(X=rna.layers["counts"].astype(np.float32), obs=rna.obs.copy(),
+                    var=pd.DataFrame(index=rna.var_names.copy()))
+    sc.pp.normalize_total(viz, target_sum=settings["normalize_total_target_sum"])
+    sc.pp.log1p(viz)
+    sc.pp.highly_variable_genes(viz, n_top_genes=settings["n_top_genes"],
+                               flavor=settings["hvg_flavor"], subset=False)
+    mask = viz.var["highly_variable"].to_numpy()
+    rna.var["highly_variable"] = mask
+    viz.var.to_csv(Path(root)/"results/tables"/f"{cell_line}_hvg.tsv",
+                   sep="\t", lineterminator="\n")
+    viz = viz[:, mask].copy()
+    viz.layers["counts"] = rna.layers["counts"][:, mask].copy()
+    viz.layers["log1p_normalized"] = viz.X.copy()
+    # Only the ~2,000-HVG visualization subset is centered/densified.
+    viz.X = viz.X.astype(np.float64)
+    sc.pp.scale(viz, zero_center=True, max_value=settings["scale_max_value"])
+    if not np.isfinite(viz.X).all():
+        raise ValueError("Scanpy HVG scaling returned nonfinite values.")
+    sc.pp.pca(viz, n_comps=settings["pca_components"], svd_solver="arpack",
+              random_state=seed, mask_var=None)
+    sc.pp.neighbors(viz, n_neighbors=settings["n_neighbors"],
+                    n_pcs=settings["neighbors_n_pcs"], use_rep="X_pca",
+                    transformer=settings["neighbors_transformer"], random_state=seed)
+    sc.tl.leiden(viz, resolution=settings["leiden_resolution"], random_state=seed,
+                 flavor=settings["leiden_flavor"], n_iterations=settings["leiden_n_iterations"],
+                 directed=False, key_added="leiden")
+    sc.tl.umap(viz, min_dist=settings["umap_min_dist"], spread=settings["umap_spread"],
+               maxiter=settings["umap_maxiter"], random_state=seed)
+    viz.uns["visualization"] = copy.deepcopy(settings)
+    viz.uns["visualization"]["interpretation"] = "RNA-derived exploratory clusters, not cell types or predictions"
+    rna.obs["leiden"] = viz.obs["leiden"].copy()
+    rna.obsm["X_pca"] = viz.obsm["X_pca"].copy()
+    rna.obsm["X_umap"] = viz.obsm["X_umap"].copy()
+    rna.varm["PCs"] = np.zeros((rna.n_vars, viz.varm["PCs"].shape[1]), dtype=np.float32)
+    rna.varm["PCs"][mask] = viz.varm["PCs"]
+    for key in ("pca", "neighbors", "umap", "leiden", "visualization"):
+        rna.uns[key] = copy.deepcopy(viz.uns[key])
+    for key in ("connectivities", "distances"):
+        rna.obsp[key] = viz.obsp[key].copy()
+    tables, figures = Path(root)/"results/tables", Path(root)/"results/figures"
+    summary = pd.crosstab(viz.obs["leiden"], viz.obs["treatment"], dropna=False)
+    summary.to_csv(tables/f"{cell_line}_cluster_treatment_counts.tsv",sep="\t",lineterminator="\n")
+    embedding = viz.obs[["treatment","leiden"]].copy()
+    embedding["UMAP1"], embedding["UMAP2"] = viz.obsm["X_umap"].T
+    for i in range(viz.obsm["X_pca"].shape[1]):
+        embedding[f"PC{i+1}"] = viz.obsm["X_pca"][:, i]
+    embedding.to_csv(tables/f"{cell_line}_rna_embeddings.tsv",sep="\t",lineterminator="\n")
+    save_h5ad(viz, Path(root)/"data/processed"/f"{cell_line}_RNA_visualization.h5ad")
+    import matplotlib.pyplot as plt
+    sc.set_figure_params(dpi=100, dpi_save=160, fontsize=10, frameon=False)
+    colors = ["treatment", "leiden", "rna_total_counts", "rna_pct_counts_mt"]
+    labels = ["Treatment", "Leiden cluster", "RNA counts", "Mitochondrial RNA (%)"]
+    for name, plot in (("pca",sc.pl.pca), ("umap",sc.pl.umap)):
+        fig = plot(viz, color=colors, title=[f"{cell_line}: {x}" for x in labels],
+                   ncols=2, show=False, return_fig=True, size=8, wspace=0.35)
+        fig.savefig(figures/f"{cell_line}_rna_{name}.png",dpi=160,bbox_inches="tight")
+        plt.close(fig)
+    sc.pl.pca_variance_ratio(viz, n_pcs=settings["pca_components"], log=False, show=False)
+    plt.gcf().savefig(figures/f"{cell_line}_pca_variance.png",dpi=160,bbox_inches="tight")
+    plt.close()
+    result = {"n_hvgs": int(mask.sum()), "n_pcs": int(viz.obsm["X_pca"].shape[1]),
+              "n_clusters": int(viz.obs["leiden"].nunique()),
+              "cluster_sizes": {str(k):int(v) for k,v in viz.obs["leiden"].value_counts().items()},
+              "pca_variance_first_30": float(viz.uns["pca"]["variance_ratio"][:settings["neighbors_n_pcs"]].sum()),
+              "parameters": settings}
+    del viz
+    gc.collect()
+    return result
 
 def preprocess_line(root, cell_line, config):
     root = Path(root)
@@ -192,6 +273,10 @@ def preprocess_line(root, cell_line, config):
         "centered_scale": "scaled_no_center - var.scale_center_offset",
         "scale_scope": "descriptive per cell line; refit inside future training folds",
         "filter_order": config["filter_order"], "source_sha256_json": json.dumps(source_hashes)}
+    rna.uns["log1p"] = {"base": None}
+    print(f"{cell_line}: Scanpy HVGs, PCA, neighbors, Leiden and UMAP", flush=True)
+    visualization = visualize_rna(rna, root, cell_line, config)
+    qc["leiden"] = pd.Series(rna.obs["leiden"].astype(str), index=rna.obs_names).reindex(qc.index).fillna("excluded")
     rna_path = output / f"{cell_line}_RNA_paper_qc.h5ad"
     save_h5ad(rna, rna_path)
     del rna, kept_counts, log, scaled
@@ -241,7 +326,9 @@ def preprocess_line(root, cell_line, config):
         "treatment_before": {k:int(v) for k,v in qc.treatment.value_counts().items()},
         "treatment_after": {k:int(v) for k,v in qc.loc[cell_keep].treatment.value_counts().items()},
         "source_sha256": source_hashes, "exact_paired_order": True,
-        "outputs": [str(rna_path.relative_to(root)), str(atac_path.relative_to(root))]}
+        "visualization": visualization,
+        "scanpy_version": importlib.metadata.version("scanpy"),
+        "outputs": [str(rna_path.relative_to(root)), str(atac_path.relative_to(root)), f"data/processed/{cell_line}_RNA_visualization.h5ad"]}
     saved_rna, saved_atac = ad.read_h5ad(rna_path, backed="r"), ad.read_h5ad(atac_path, backed="r")
     try:
         if not saved_rna.obs_names.equals(saved_atac.obs_names):

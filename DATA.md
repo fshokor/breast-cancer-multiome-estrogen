@@ -138,3 +138,9 @@ Kupp et al. (2025), DOI 10.1038/s42003-025-08533-7, describes this dataset as a
 24-hour estrogen experiment (Methods p.12), conflicting with the 48-hour Multiome
 description in Ors et al. above. Metadata cannot resolve this discrepancy.
 No duration is assigned to cells; E2/Vehicle labels are preserved.
+
+### Scanpy visualization update
+nb02 now uses Scanpy QC/transformations and independently fits RNA PCA, Leiden
+clusters and UMAP for each cell line. These exploratory fits are separate from
+the paper-QC count/log1p representation and do not constitute cell-type annotation
+or ATAC/joint embeddings. See QC_PREPROCESSING.md for exact settings and validation.

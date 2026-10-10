@@ -29,9 +29,28 @@
         "rna_features": 36601,
         "atac_features": 206167
       }
+    },
+    "implementation": "Scanpy",
+    "visualization": {
+      "scope": "RNA only, independently per cell line; exploratory, not paper-exact",
+      "normalize_total_target_sum": 10000.0,
+      "hvg_flavor": "seurat",
+      "n_top_genes": 2000,
+      "scale_max_value": 10.0,
+      "pca_components": 50,
+      "neighbors_n_pcs": 30,
+      "n_neighbors": 15,
+      "neighbors_transformer": "sklearn",
+      "leiden_resolution": 0.5,
+      "leiden_flavor": "igraph",
+      "leiden_n_iterations": 2,
+      "umap_min_dist": 0.3,
+      "umap_spread": 1.0,
+      "umap_maxiter": 500,
+      "random_state": 42
     }
   },
-  "run_at_utc": "2026-10-10T14:34:25.978707+00:00",
+  "run_at_utc": "2026-10-10T15:16:31.384859+00:00",
   "cell_lines": {
     "MCF7": {
       "cells_before": 6438,
@@ -58,9 +77,46 @@
         "metadata": "74184cef431939af755f1555fd44d0f25b292a2e0a6ba5663ad574d5609e9a7c"
       },
       "exact_paired_order": true,
+      "visualization": {
+        "n_hvgs": 2000,
+        "n_pcs": 50,
+        "n_clusters": 9,
+        "cluster_sizes": {
+          "4": 2179,
+          "3": 1262,
+          "0": 1206,
+          "2": 452,
+          "5": 354,
+          "6": 255,
+          "1": 177,
+          "7": 107,
+          "8": 27
+        },
+        "pca_variance_first_30": 0.16049416630280175,
+        "parameters": {
+          "scope": "RNA only, independently per cell line; exploratory, not paper-exact",
+          "normalize_total_target_sum": 10000.0,
+          "hvg_flavor": "seurat",
+          "n_top_genes": 2000,
+          "scale_max_value": 10.0,
+          "pca_components": 50,
+          "neighbors_n_pcs": 30,
+          "n_neighbors": 15,
+          "neighbors_transformer": "sklearn",
+          "leiden_resolution": 0.5,
+          "leiden_flavor": "igraph",
+          "leiden_n_iterations": 2,
+          "umap_min_dist": 0.3,
+          "umap_spread": 1.0,
+          "umap_maxiter": 500,
+          "random_state": 42
+        }
+      },
+      "scanpy_version": "1.11.5",
       "outputs": [
         "data/processed/MCF7_RNA_paper_qc.h5ad",
-        "data/processed/MCF7_ATAC_paired_paper_qc.h5ad"
+        "data/processed/MCF7_ATAC_paired_paper_qc.h5ad",
+        "data/processed/MCF7_RNA_visualization.h5ad"
       ]
     },
     "T47D": {
@@ -88,9 +144,45 @@
         "metadata": "e36d108ab2aae925007f0d5dee10cba8a2be0308aac0570a4109f54903bca542"
       },
       "exact_paired_order": true,
+      "visualization": {
+        "n_hvgs": 2000,
+        "n_pcs": 50,
+        "n_clusters": 8,
+        "cluster_sizes": {
+          "1": 1924,
+          "4": 1398,
+          "2": 1195,
+          "0": 570,
+          "5": 452,
+          "6": 432,
+          "3": 320,
+          "7": 271
+        },
+        "pca_variance_first_30": 0.15321452146431014,
+        "parameters": {
+          "scope": "RNA only, independently per cell line; exploratory, not paper-exact",
+          "normalize_total_target_sum": 10000.0,
+          "hvg_flavor": "seurat",
+          "n_top_genes": 2000,
+          "scale_max_value": 10.0,
+          "pca_components": 50,
+          "neighbors_n_pcs": 30,
+          "n_neighbors": 15,
+          "neighbors_transformer": "sklearn",
+          "leiden_resolution": 0.5,
+          "leiden_flavor": "igraph",
+          "leiden_n_iterations": 2,
+          "umap_min_dist": 0.3,
+          "umap_spread": 1.0,
+          "umap_maxiter": 500,
+          "random_state": 42
+        }
+      },
+      "scanpy_version": "1.11.5",
       "outputs": [
         "data/processed/T47D_RNA_paper_qc.h5ad",
-        "data/processed/T47D_ATAC_paired_paper_qc.h5ad"
+        "data/processed/T47D_ATAC_paired_paper_qc.h5ad",
+        "data/processed/T47D_RNA_visualization.h5ad"
       ]
     }
   }

@@ -2,12 +2,13 @@ import gzip
 import json
 import tempfile
 import unittest
+import copy
 from pathlib import Path
 import anndata as ad
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from src.qc_preprocessing import read_sparse_counts, rna_qc, sparse_log_and_scale, centered_scaled_block, read_metadata
+from src.qc_preprocessing import read_sparse_counts, rna_qc, sparse_log_and_scale, centered_scaled_block, read_metadata, visualize_rna
 
 class PaperQCTests(unittest.TestCase):
     def setUp(self):
@@ -71,3 +72,37 @@ class PaperQCTests(unittest.TestCase):
     def test_missing_mitochondrial_annotation_fails(self):
         with self.assertRaisesRegex(ValueError,"No mitochondrial"):
             rna_qc(sparse.csr_matrix(np.ones((4,3))),pd.Index(["A","B","C"]),self.config)
+
+
+class RNAVisualizationTests(unittest.TestCase):
+    def test_scanpy_embeddings_preserve_counts_and_cell_order(self):
+        root = Path(__file__).resolve().parents[1]
+        config = copy.deepcopy(json.loads((root/"configs/qc_paper.json").read_text()))
+        config["visualization"].update(n_top_genes=30, pca_components=10,
+                                       neighbors_n_pcs=8, n_neighbors=5, umap_maxiter=30)
+        rng = np.random.default_rng(42)
+        counts = sparse.csr_matrix(rng.poisson(2, (80, 120)).astype(np.int32))
+        obs = pd.DataFrame({"treatment":["Vehicle"]*40+["E2"]*40,
+                            "rna_total_counts":np.asarray(counts.sum(axis=1)).ravel(),
+                            "rna_pct_counts_mt":rng.uniform(0,20,80)},
+                           index=[f"cell{i}" for i in range(80)])
+        a = ad.AnnData(X=counts.astype(np.float32), obs=obs,
+                      var=pd.DataFrame(index=[f"gene{i}" for i in range(120)]))
+        a.layers["counts"] = counts.copy()
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            for sub in ("results/tables","results/figures","data/processed"):
+                (folder/sub).mkdir(parents=True)
+            result = visualize_rna(a, folder, "TEST", config)
+            self.assertEqual(a.obsm["X_pca"].shape,(80,10))
+            self.assertEqual(a.obsm["X_umap"].shape,(80,2))
+            self.assertTrue(np.isfinite(a.obsm["X_umap"]).all())
+            self.assertTrue(a.obs["leiden"].notna().all())
+            self.assertEqual(a.obsp["connectivities"].shape,(80,80))
+            self.assertEqual((a.layers["counts"] != counts).nnz,0)
+            self.assertEqual(list(a.obs_names),list(obs.index))
+            self.assertGreaterEqual(result["n_hvgs"],30)
+            v = ad.read_h5ad(folder/"data/processed/TEST_RNA_visualization.h5ad")
+            self.assertEqual(list(v.obs_names),list(a.obs_names))
+            self.assertEqual((v.layers["counts"] != counts[:,a.var.highly_variable.to_numpy()]).nnz,0)
+            self.assertTrue((folder/"results/figures/TEST_rna_umap.png").is_file())

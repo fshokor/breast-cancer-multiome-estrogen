@@ -27,5 +27,24 @@
       "rna_features": 36601,
       "atac_features": 206167
     }
+  },
+  "implementation": "Scanpy",
+  "visualization": {
+    "scope": "RNA only, independently per cell line; exploratory, not paper-exact",
+    "normalize_total_target_sum": 10000.0,
+    "hvg_flavor": "seurat",
+    "n_top_genes": 2000,
+    "scale_max_value": 10.0,
+    "pca_components": 50,
+    "neighbors_n_pcs": 30,
+    "n_neighbors": 15,
+    "neighbors_transformer": "sklearn",
+    "leiden_resolution": 0.5,
+    "leiden_flavor": "igraph",
+    "leiden_n_iterations": 2,
+    "umap_min_dist": 0.3,
+    "umap_spread": 1.0,
+    "umap_maxiter": 500,
+    "random_state": 42
   }
 }
