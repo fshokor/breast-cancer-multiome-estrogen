@@ -1,0 +1,54 @@
+{
+  "accession": "GSE154873",
+  "verified_at_utc": "2026-10-10T13:48:34.908368+00:00",
+  "files": {
+    "mcf7_rna": {
+      "filename": "GSE154873_MCF7_multiome_RNA_counts.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/GSE154873_MCF7_multiome_RNA_counts.tsv.gz",
+      "compressed_bytes": 21850925,
+      "uncompressed_bytes": 472334144,
+      "sha256": "f9db7d5250502cceeca67c172eecb833d1c77772650636482f4560b00946915d",
+      "gzip_crc_valid": true
+    },
+    "mcf7_atac": {
+      "filename": "GSE154873_MCF7_multiome_ATAC_counts.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/GSE154873_MCF7_multiome_ATAC_counts.tsv.gz",
+      "compressed_bytes": 66788657,
+      "uncompressed_bytes": 2659825102,
+      "sha256": "80aacae2e0e84ec2268e3dc7b4450aec79e5438aeec8d9fc15ea009c236c59f4",
+      "gzip_crc_valid": true
+    },
+    "mcf7_metadata": {
+      "filename": "GSE154873_MCF7_multiome_metadata.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/GSE154873_MCF7_multiome_metadata.tsv.gz",
+      "compressed_bytes": 34522,
+      "uncompressed_bytes": 411584,
+      "sha256": "74184cef431939af755f1555fd44d0f25b292a2e0a6ba5663ad574d5609e9a7c",
+      "gzip_crc_valid": true
+    },
+    "t47d_rna": {
+      "filename": "GSE154873_T47D_multiome_RNA_counts.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/GSE154873_T47D_multiome_RNA_counts.tsv.gz",
+      "compressed_bytes": 23679618,
+      "uncompressed_bytes": 485405233,
+      "sha256": "576f0d067d91f8e435b4bd3fa47cb1cbc541d724293965ad629dd52047f3004f",
+      "gzip_crc_valid": true
+    },
+    "t47d_atac": {
+      "filename": "GSE154873_T47D_multiome_ATAC_counts.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/GSE154873_T47D_multiome_ATAC_counts.tsv.gz",
+      "compressed_bytes": 86265641,
+      "uncompressed_bytes": 2732940807,
+      "sha256": "6c72f18ef3fcf49e7a4d5971e6aa4073b4982c8c1ab8a8e9ed810e2ab954bce7",
+      "gzip_crc_valid": true
+    },
+    "t47d_metadata": {
+      "filename": "GSE154873_T47D_multiome_metadata.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/GSE154873_T47D_multiome_metadata.tsv.gz",
+      "compressed_bytes": 35325,
+      "uncompressed_bytes": 422801,
+      "sha256": "e36d108ab2aae925007f0d5dee10cba8a2be0308aac0570a4109f54903bca542",
+      "gzip_crc_valid": true
+    }
+  }
+}

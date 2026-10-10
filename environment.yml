@@ -1,0 +1,20 @@
+name: breast-cancer-multiome-estrogen
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - scanpy
+    - anndata
+    - numpy
+    - pandas
+    - scipy
+    - scikit-learn
+    - matplotlib
+    - torch
+    - jupyter
+    - ipykernel
+    - gseapy
+    - statsmodels
+    - scvi-tools

@@ -1,0 +1,16 @@
+data/raw/
+data/processed/
+*.h5ad
+*.h5mu
+*.gz
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.env
+.venv/
+.conda/
+*.egg-info/
+.DS_Store
+*Zone.Identifier
+results/tables/*_run.log
+results/tables/environment_install.log

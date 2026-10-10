@@ -1,0 +1,273 @@
+{
+  "accession": "GSE154873",
+  "inspected_at_utc": "2026-10-10T13:48:38.328286+00:00",
+  "method": "Complete streaming scan of all entries; no cell filtering or transpose",
+  "cell_lines": {
+    "MCF7": {
+      "metadata": {
+        "filename": "GSE154873_MCF7_multiome_metadata.tsv.gz",
+        "shape": [
+          6438,
+          2
+        ],
+        "header_present": false,
+        "original_columns": null,
+        "assigned_columns": [
+          "column_1",
+          "column_2"
+        ],
+        "barcode_column": "column_1",
+        "unique_barcodes": 6438,
+        "duplicate_barcodes": {},
+        "barcode_examples": [
+          "YW_si_Control_plus_E2_AAACAGCCAACGTGCT-1",
+          "YW_si_Control_plus_E2_AAACATGCAGCAAGAT-1",
+          "YW_si_Control_plus_E2_AAACATGCATCCGTAA-1"
+        ],
+        "non_barcode_value_counts": {
+          "column_2": {
+            "YW_si_Control_plus_E2": 3443,
+            "YW_si_Control_plus_Veh": 2995
+          }
+        },
+        "empty_fields": 0
+      },
+      "rna": {
+        "filename": "GSE154873_MCF7_multiome_RNA_counts.tsv.gz",
+        "shape_on_disk": [
+          36601,
+          6438
+        ],
+        "header_style": "feature/index column label omitted",
+        "orientation": "features x cells",
+        "n_features": 36601,
+        "n_cells": 6438,
+        "feature_examples": [
+          "MIR1302-2HG",
+          "FAM138A",
+          "OR4F5",
+          "AL627309.1",
+          "AL627309.3"
+        ],
+        "barcode_examples": [
+          "YW_si_Control_plus_E2_AAACAGCCAACGTGCT-1",
+          "YW_si_Control_plus_E2_AAACATGCAGCAAGAT-1",
+          "YW_si_Control_plus_E2_AAACATGCATCCGTAA-1"
+        ],
+        "duplicate_features": {},
+        "duplicate_barcodes": {},
+        "total_entries": 235637238,
+        "nonzero_entries": 22454570,
+        "zero_fraction": 0.9047070395554373,
+        "minimum": 0.0,
+        "maximum": 3041.0,
+        "negative_entries": 0,
+        "noninteger_entries": 0,
+        "nonfinite_entries": 0,
+        "all_nonnegative_integer_counts": true,
+        "barcode_overlap_metadata": 6438,
+        "feature_format_counts": {
+          "chr:start-end": 0,
+          "chr-start-end": 0,
+          "ensembl_gene": 0
+        }
+      },
+      "atac": {
+        "filename": "GSE154873_MCF7_multiome_ATAC_counts.tsv.gz",
+        "shape_on_disk": [
+          206167,
+          6438
+        ],
+        "header_style": "feature/index column label omitted",
+        "orientation": "features x cells",
+        "n_features": 206167,
+        "n_cells": 6438,
+        "feature_examples": [
+          "chr1-9785-10705",
+          "chr1-180613-181736",
+          "chr1-183962-184840",
+          "chr1-191011-191897",
+          "chr1-267557-268458"
+        ],
+        "barcode_examples": [
+          "YW_si_Control_plus_E2_AAACAGCCAACGTGCT-1",
+          "YW_si_Control_plus_E2_AAACATGCAGCAAGAT-1",
+          "YW_si_Control_plus_E2_AAACATGCATCCGTAA-1"
+        ],
+        "duplicate_features": {},
+        "duplicate_barcodes": {},
+        "total_entries": 1327303146,
+        "nonzero_entries": 38865133,
+        "zero_fraction": 0.9707187215542092,
+        "minimum": 0.0,
+        "maximum": 112.0,
+        "negative_entries": 0,
+        "noninteger_entries": 0,
+        "nonfinite_entries": 0,
+        "all_nonnegative_integer_counts": true,
+        "barcode_overlap_metadata": 6438,
+        "feature_format_counts": {
+          "chr:start-end": 0,
+          "chr-start-end": 206078,
+          "ensembl_gene": 0
+        }
+      },
+      "pairing": {
+        "counts": {
+          "rna": 6438,
+          "atac": 6438,
+          "metadata": 6438
+        },
+        "intersections": {
+          "rna_intersection_atac": 6438,
+          "rna_intersection_metadata": 6438,
+          "atac_intersection_metadata": 6438
+        },
+        "missing_barcodes": {
+          "rna_only_vs_atac": [],
+          "atac_only_vs_rna": [],
+          "rna_only_vs_metadata": [],
+          "metadata_only_vs_rna": [],
+          "atac_only_vs_metadata": [],
+          "metadata_only_vs_atac": []
+        },
+        "exact_sets_equal": true,
+        "exact_order_equal": true,
+        "all_identifiers_unique": true
+      }
+    },
+    "T47D": {
+      "metadata": {
+        "filename": "GSE154873_T47D_multiome_metadata.tsv.gz",
+        "shape": [
+          6615,
+          2
+        ],
+        "header_present": false,
+        "original_columns": null,
+        "assigned_columns": [
+          "column_1",
+          "column_2"
+        ],
+        "barcode_column": "column_1",
+        "unique_barcodes": 6615,
+        "duplicate_barcodes": {},
+        "barcode_examples": [
+          "YW_si_Control_plus_E2_AAACAGCCAGGTCCTG-1",
+          "YW_si_Control_plus_E2_AAACAGCCATCGCTTT-1",
+          "YW_si_Control_plus_E2_AAACATGCAATCTCTC-1"
+        ],
+        "non_barcode_value_counts": {
+          "column_2": {
+            "YW_si_Control_plus_E2": 3587,
+            "YW_si_Control_plus_Veh": 3028
+          }
+        },
+        "empty_fields": 0
+      },
+      "rna": {
+        "filename": "GSE154873_T47D_multiome_RNA_counts.tsv.gz",
+        "shape_on_disk": [
+          36601,
+          6615
+        ],
+        "header_style": "feature/index column label omitted",
+        "orientation": "features x cells",
+        "n_features": 36601,
+        "n_cells": 6615,
+        "feature_examples": [
+          "MIR1302-2HG",
+          "FAM138A",
+          "OR4F5",
+          "AL627309.1",
+          "AL627309.3"
+        ],
+        "barcode_examples": [
+          "YW_si_Control_plus_E2_AAACAGCCAGGTCCTG-1",
+          "YW_si_Control_plus_E2_AAACAGCCATCGCTTT-1",
+          "YW_si_Control_plus_E2_AAACATGCAATCTCTC-1"
+        ],
+        "duplicate_features": {},
+        "duplicate_barcodes": {},
+        "total_entries": 242115615,
+        "nonzero_entries": 24259302,
+        "zero_fraction": 0.8998028194092315,
+        "minimum": 0.0,
+        "maximum": 1661.0,
+        "negative_entries": 0,
+        "noninteger_entries": 0,
+        "nonfinite_entries": 0,
+        "all_nonnegative_integer_counts": true,
+        "barcode_overlap_metadata": 6615,
+        "feature_format_counts": {
+          "chr:start-end": 0,
+          "chr-start-end": 0,
+          "ensembl_gene": 0
+        }
+      },
+      "atac": {
+        "filename": "GSE154873_T47D_multiome_ATAC_counts.tsv.gz",
+        "shape_on_disk": [
+          206167,
+          6615
+        ],
+        "header_style": "feature/index column label omitted",
+        "orientation": "features x cells",
+        "n_features": 206167,
+        "n_cells": 6615,
+        "feature_examples": [
+          "chr1-9785-10705",
+          "chr1-180613-181736",
+          "chr1-183962-184840",
+          "chr1-191011-191897",
+          "chr1-267557-268458"
+        ],
+        "barcode_examples": [
+          "YW_si_Control_plus_E2_AAACAGCCAGGTCCTG-1",
+          "YW_si_Control_plus_E2_AAACAGCCATCGCTTT-1",
+          "YW_si_Control_plus_E2_AAACATGCAATCTCTC-1"
+        ],
+        "duplicate_features": {},
+        "duplicate_barcodes": {},
+        "total_entries": 1363794705,
+        "nonzero_entries": 54339458,
+        "zero_fraction": 0.9601556907349923,
+        "minimum": 0.0,
+        "maximum": 131.0,
+        "negative_entries": 0,
+        "noninteger_entries": 0,
+        "nonfinite_entries": 0,
+        "all_nonnegative_integer_counts": true,
+        "barcode_overlap_metadata": 6615,
+        "feature_format_counts": {
+          "chr:start-end": 0,
+          "chr-start-end": 206078,
+          "ensembl_gene": 0
+        }
+      },
+      "pairing": {
+        "counts": {
+          "rna": 6615,
+          "atac": 6615,
+          "metadata": 6615
+        },
+        "intersections": {
+          "rna_intersection_atac": 6615,
+          "rna_intersection_metadata": 6615,
+          "atac_intersection_metadata": 6615
+        },
+        "missing_barcodes": {
+          "rna_only_vs_atac": [],
+          "atac_only_vs_rna": [],
+          "rna_only_vs_metadata": [],
+          "metadata_only_vs_rna": [],
+          "atac_only_vs_metadata": [],
+          "metadata_only_vs_atac": []
+        },
+        "exact_sets_equal": true,
+        "exact_order_equal": true,
+        "all_identifiers_unique": true
+      }
+    }
+  }
+}

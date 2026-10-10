@@ -1,0 +1,13 @@
+scanpy
+anndata
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+torch
+jupyter
+ipykernel
+gseapy
+statsmodels
+scvi-tools

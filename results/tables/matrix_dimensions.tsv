@@ -1,0 +1,5 @@
+cell_line	modality	features	cells	orientation	zero_fraction	integer_counts
+MCF7	rna	36601	6438	features x cells	0.9047070395554373	True
+MCF7	atac	206167	6438	features x cells	0.9707187215542092	True
+T47D	rna	36601	6615	features x cells	0.8998028194092315	True
+T47D	atac	206167	6615	features x cells	0.9601556907349923	True
