@@ -1,0 +1,12 @@
+{
+  "title": "Interpretable and integrative analysis of single-cell multiomics with scMKL",
+  "doi": "10.1038/s42003-025-08533-7",
+  "user_supplied_pdf_sha256": "76e206468c9946292daace7876fcdcc067b8c580bbd09638220a1265fda05239",
+  "qc_source_page": 14,
+  "dataset_table_page": 2,
+  "treatment_timing_page": 12,
+  "primary_dataset_doi": "10.1093/nar/gkac908",
+  "scmkl_paper_code_revision": "84d68eef6a0985ba757d4b8d4158bc765f48c1ac",
+  "scmkl_code_revision": "d6448b73895ab62b31f78213f6e4fed910bce4c4",
+  "software_note": "Inspected public revisions are not asserted to be archived paper version 0.1.6."
+}

@@ -1,0 +1,10 @@
+{
+  "notebook": "nb02_qc_preprocessing.ipynb",
+  "executed_locally": true,
+  "colab_drive_mount_tested": false,
+  "tests_passed": 14,
+  "real_data_roundtrip": "passed",
+  "raw_counts_preserved": true,
+  "paired_cell_order": "exact",
+  "full_dense_matrix_created": false
+}

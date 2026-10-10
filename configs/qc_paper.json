@@ -1,0 +1,31 @@
+{
+  "reference_doi": "10.1038/s42003-025-08533-7",
+  "reference_section": "Methods / Unsupervised algorithms / Standard single-cell analysis workflow, p.14",
+  "min_cells_per_gene": 3,
+  "min_genes_per_cell": 100,
+  "max_pct_mitochondrial": 30.0,
+  "mitochondrial_prefix": "MT-",
+  "filter_order": "gene prevalence on supplied cells, then cell metrics on retained genes; one pass",
+  "rna_transform": "log1p counts; no unspecified library-size normalization",
+  "scaling_ddof": 1,
+  "scaling_clip": null,
+  "atac_cell_filter": "same RNA-selected paired cells",
+  "atac_peak_filter": null,
+  "atac_extra_cell_thresholds": null,
+  "atac_layers": [
+    "binary"
+  ],
+  "prediction_fit_scope": "Refit feature selection/scaling/IDF on training data later",
+  "expected": {
+    "MCF7": {
+      "cells": 6438,
+      "rna_features": 36601,
+      "atac_features": 206167
+    },
+    "T47D": {
+      "cells": 6615,
+      "rna_features": 36601,
+      "atac_features": 206167
+    }
+  }
+}

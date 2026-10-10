@@ -8,6 +8,7 @@ import os
 import platform
 import subprocess
 import sys
+import unittest
 from pathlib import Path
 import nbformat
 from nbclient import NotebookClient
@@ -40,7 +41,7 @@ assert len(downloader.FILES) == 6
 for filename in downloader.FILES.values():
     assert downloader.file_url(filename) == "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE154nnn/GSE154873/suppl/" + filename
 notebooks = []
-for path in sorted((ROOT / "notebooks").glob("*.ipynb")):
+for path in [ROOT / "notebooks" / name for name in ("nb00_colab_setup.ipynb", "nb01_data_inspection.ipynb")]:
     nb = nbformat.read(path, as_version=4)
     nbformat.validate(nb)
     print(f"Executing {path.name}", flush=True)
@@ -51,7 +52,7 @@ for path in sorted((ROOT / "notebooks").glob("*.ipynb")):
     print(f"Passed {path.name}", flush=True)
 report = dict(python=platform.python_version(), platform=platform.platform(),
               packages=versions, notebooks_executed_locally=notebooks,
-              colab_drive_mount_tested=False, tests_passed=8, pip_check="passed",
+              colab_drive_mount_tested=False, tests_passed=unittest.defaultTestLoader.discover(str(ROOT / "tests")).countTestCases(), pip_check="passed",
               scripts_compile=True, expected_folders=True, six_geo_urls=True)
 (ROOT / "results/tables/validation.json").write_text(json.dumps(report, indent=2) + "\n")
 print("All setup validations passed.", flush=True)

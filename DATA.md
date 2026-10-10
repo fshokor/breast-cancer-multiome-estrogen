@@ -128,6 +128,13 @@ No cells were discarded to obtain these matches.
   are also executable locally, where their actual data paths are tested.
 - Local environment uses Python 3.11 and CPU PyTorch. No scMKL installation was attempted.
 
-Next recommended notebook: nb02_qc_preprocessing.ipynb, to be designed after
-review of these findings. QC/preprocessing, DE, GSEA, differential ATAC, motif
-analysis, scMKL, MultiVI and prediction were **not** run.
+The initial inspection above preceded QC. The subsequent paper-guided QC milestone
+is implemented in nb02_qc_preprocessing.ipynb; see QC_PREPROCESSING.md and
+results/tables/paper_qc_summary.json for the resulting dimensions.
+DE, GSEA, differential ATAC, motif analysis, scMKL, MultiVI and prediction have not run.
+
+### Follow-up provenance note
+Kupp et al. (2025), DOI 10.1038/s42003-025-08533-7, describes this dataset as a
+24-hour estrogen experiment (Methods p.12), conflicting with the 48-hour Multiome
+description in Ors et al. above. Metadata cannot resolve this discrepancy.
+No duration is assigned to cells; E2/Vehicle labels are preserved.

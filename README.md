@@ -1,6 +1,6 @@
 # Breast cancer Multiome estrogen response
 
-Setup and structural inspection of the paired RNA + ATAC supplements from
+Setup, structural inspection, and paper-guided QC of the paired RNA + ATAC supplements from
 [GSE154873](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE154873).
 Organization follows the local multiomics-relationship-modeling reference project:
 numbered scientific notebooks, Google Drive data paths, shared Python modules,
@@ -18,7 +18,7 @@ separate raw/processed data, and small reproducibility outputs in results/tables
 Future work will compare vehicle versus estrogen treatment using RNA differential
 expression, pathways, ATAC differential accessibility, motifs and RNA–ATAC concordance.
 Prediction will compare RNA only, ATAC only and RNA + ATAC, potentially using scMKL
-and MultiVI. None of these analyses is implemented in this milestone.
+and MultiVI. These downstream analyses are not implemented.
 
 ## Local WSL workflow
 Run from the repository root:
@@ -81,7 +81,7 @@ After editing canonical source, regenerate notebooks:
 |---|---|
 | nb00 | Colab setup + GEO download |
 | nb01 | Data inspection and paired-cell verification |
-| nb02 (future) | QC and preprocessing |
+| nb02 | Paper-guided QC and paired preprocessing |
 | nb03 (future) | RNA differential expression |
 | nb04 (future) | RNA GSEA |
 | nb05 (future) | ATAC differential accessibility |
@@ -96,12 +96,21 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-Only nb00 and nb01 exist. scMKL is not installed. No biological analysis, modeling,
-cell filtering, or AnnData conversion has been run. The roadmap can change.
+nb00, nb01 and nb02 are available. nb02 applies the published RNA QC thresholds,
+preserves paired ATAC cells, and writes sparse AnnData objects.
+See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
+scMKL is not installed. No downstream biological analysis or modeling has been run.
+The roadmap can change.
 
 ## Validation
 Run python scripts/validate_setup.py in the Python 3.11 environment. It checks
 package imports, notebook schemas, Python compilation, paths and URLs, exercises
-eight workflow tests, and executes both notebooks locally against the downloaded
+the workflow tests, and executes both notebooks locally against the downloaded
 files. The executed notebooks and results/tables/validation.json retain evidence.
 The live Colab Drive authorization step is not tested by local execution.
+
+## Paper-guided QC
+Use notebooks/nb02_qc_preprocessing.ipynb after inspection. It follows the three
+RNA QC thresholds in Kupp et al. (2025), DOI 10.1038/s42003-025-08533-7.
+See [the QC guide](QC_PREPROCESSING.md) for the distinction between the paper's
+standard workflow and scMKL model preprocessing, saved layers, and reproducibility limits.
