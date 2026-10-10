@@ -1,0 +1,5 @@
+scenario	tested_ATAC_peaks	eligible_peaks	RNA_tested_genes	mapped_RNA_genes	condition_exclusive_eligible_peaks
+100kb_all	44380	23420	11918	9706	589
+100kb_shared_detection	44380	22831	11918	9675	0
+10kb_all	44380	15713	11918	9452	461
+10kb_shared_detection	44380	15252	11918	9410	0

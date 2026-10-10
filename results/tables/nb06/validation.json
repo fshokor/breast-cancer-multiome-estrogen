@@ -1,0 +1,13 @@
+{
+  "executed_locally": true,
+  "colab_drive_mount_tested": false,
+  "full_project_tests_passed": 27,
+  "real_data_checks": "passed",
+  "all_50_Hallmarks_retained": true,
+  "both_NES_directions_preserved": true,
+  "upstream_inputs_unchanged": true,
+  "four_scenarios_and_two_gene_subsets": true,
+  "figures_visually_reviewed": true,
+  "executed_notebook_error_free": true,
+  "embedded_implementation_matches_source": true
+}

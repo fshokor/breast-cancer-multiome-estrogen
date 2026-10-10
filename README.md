@@ -73,7 +73,7 @@ After editing canonical source, regenerate notebooks:
 - scripts/download_gse154873.py — standard-library downloader
 - scripts/inspect_gse154873.py and src/data_inspection.py — streaming inspection
 - results/tables/ — small tracked manifests, dimensions, inspection and environment records
-- results/figures/ — reserved for future figures
+- results/figures/ — saved notebook figures
 - data/raw/ and data/processed/ — ignored data directories; see data/README.md
 
 ## Initial roadmap
@@ -85,8 +85,8 @@ After editing canonical source, regenerate notebooks:
 | nb03 | Cluster markers, quality, sensitivity and cell-state review |
 | nb04 | Exploratory E2 versus Vehicle RNA DEG + GSEA |
 | nb05 | ATAC QC, LSI/UMAP, exploratory differential accessibility |
-| nb06 (future) | ATAC regulatory/motif analysis |
-| nb07 (future) | RNA–ATAC pathway concordance |
+| nb06 | RNA–ATAC pathway comparison in both enrichment directions |
+| nb07 (future) | ATAC regulatory/motif analysis |
 | nb08 (future) | RNA treatment prediction |
 | nb09 (future) | ATAC treatment prediction |
 | nb10 (future) | scMKL multimodal prediction |
@@ -96,7 +96,7 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00 through nb05 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb06 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
 scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. Motif analysis and predictive modeling remain future work.
@@ -128,3 +128,7 @@ See [the methods guide](TREATMENT_DEG_GSEA.md) for the replicate audit, statisti
 ## ATAC analysis
 Use [nb05](notebooks/nb05_atac_analysis.ipynb) for ATAC-specific embeddings and depth-adjusted exploratory accessibility testing.
 See [the ATAC guide](ATAC_ANALYSIS.md) for methods, outputs, and provisional coordinate-sensitive annotations.
+
+## RNA and ATAC pathway comparison
+Use [nb06](notebooks/nb06_rna_atac_integration.ipynb) to compare both RNA GSEA directions with provisional nearby ATAC evidence.
+See [the integration guide](RNA_ATAC_INTEGRATION.md) for coverage, sensitivity analyses and interpretation limits.

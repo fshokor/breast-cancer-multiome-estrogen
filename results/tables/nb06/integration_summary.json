@@ -1,0 +1,118 @@
+{
+  "run_at_utc": "2026-10-10T21:25:24.275863+00:00",
+  "config": {
+    "rna_gsea_fdr_display": 0.05,
+    "min_mapped_genes_for_direction_summary": 10,
+    "distance_cutoffs_bp": [
+      100000,
+      10000
+    ],
+    "exclude_condition_exclusive": [
+      false,
+      true
+    ],
+    "gene_aggregation": "median across all eligible tested peaks; genes equally weighted",
+    "mapping": "single nearest gene only, identical under both coordinate conventions; exact RNA symbol match",
+    "scope": "descriptive, no new pathway significance or causal activity inference"
+  },
+  "cell_lines": {
+    "MCF7": {
+      "mapping_scenarios": [
+        {
+          "scenario": "100kb_all",
+          "tested_ATAC_peaks": 30678,
+          "eligible_peaks": 17676,
+          "RNA_tested_genes": 11650,
+          "mapped_RNA_genes": 9316,
+          "condition_exclusive_eligible_peaks": 371
+        },
+        {
+          "scenario": "100kb_shared_detection",
+          "tested_ATAC_peaks": 30678,
+          "eligible_peaks": 17305,
+          "RNA_tested_genes": 11650,
+          "mapped_RNA_genes": 9296,
+          "condition_exclusive_eligible_peaks": 0
+        },
+        {
+          "scenario": "10kb_all",
+          "tested_ATAC_peaks": 30678,
+          "eligible_peaks": 13517,
+          "RNA_tested_genes": 11650,
+          "mapped_RNA_genes": 9124,
+          "condition_exclusive_eligible_peaks": 319
+        },
+        {
+          "scenario": "10kb_shared_detection",
+          "tested_ATAC_peaks": 30678,
+          "eligible_peaks": 13198,
+          "RNA_tested_genes": 11650,
+          "mapped_RNA_genes": 9095,
+          "condition_exclusive_eligible_peaks": 0
+        }
+      ],
+      "RNA_positive_NES": 25,
+      "RNA_negative_NES": 24,
+      "RNA_positive_FDR_005": 16,
+      "RNA_negative_FDR_005": 0
+    },
+    "T47D": {
+      "mapping_scenarios": [
+        {
+          "scenario": "100kb_all",
+          "tested_ATAC_peaks": 44380,
+          "eligible_peaks": 23420,
+          "RNA_tested_genes": 11918,
+          "mapped_RNA_genes": 9706,
+          "condition_exclusive_eligible_peaks": 589
+        },
+        {
+          "scenario": "100kb_shared_detection",
+          "tested_ATAC_peaks": 44380,
+          "eligible_peaks": 22831,
+          "RNA_tested_genes": 11918,
+          "mapped_RNA_genes": 9675,
+          "condition_exclusive_eligible_peaks": 0
+        },
+        {
+          "scenario": "10kb_all",
+          "tested_ATAC_peaks": 44380,
+          "eligible_peaks": 15713,
+          "RNA_tested_genes": 11918,
+          "mapped_RNA_genes": 9452,
+          "condition_exclusive_eligible_peaks": 461
+        },
+        {
+          "scenario": "10kb_shared_detection",
+          "tested_ATAC_peaks": 44380,
+          "eligible_peaks": 15252,
+          "RNA_tested_genes": 11918,
+          "mapped_RNA_genes": 9410,
+          "condition_exclusive_eligible_peaks": 0
+        }
+      ],
+      "RNA_positive_NES": 18,
+      "RNA_negative_NES": 31,
+      "RNA_positive_FDR_005": 13,
+      "RNA_negative_FDR_005": 13
+    }
+  },
+  "source_sha256": {
+    "configs/hallmark_v7.json": "277d4d7ad0e9c0cc20f12f41fbe69cdc49bcee671c6b1579bcffe6f2882018c7",
+    "configs/atac_reference.json": "2923dcf079678d891a560ce0e98320f2b8fa6250b5dd7b78f66f757fb878b84e",
+    "results/tables/nb04/MCF7_deg_all.tsv": "2115512316f39b164d8f0d73088444ec0ebe7e7d0e4017881444a33a9d2d2beb",
+    "results/tables/nb04/MCF7_hallmark_gsea.tsv": "c8d0b04eff502f3c830704251f2356cdee235c369f8bccc8491504f9f2679feb",
+    "data/processed/MCF7_nb05_da_all.tsv": "7d944fc284395f29d81facae510ff03d86e177be3b102540bd900d700541de20",
+    "results/tables/nb04/T47D_deg_all.tsv": "f6be47ad8f8e9948b51ddbbd70d5ed075d1042cca50fbd6e9854020398e933a6",
+    "results/tables/nb04/T47D_hallmark_gsea.tsv": "725e63b128107525514fe3edd9fdb61879d2235eb7257b32365d5f692a275667",
+    "data/processed/T47D_nb05_da_all.tsv": "ee164680eabe83f130fea32a011dcafc7504cf9cfb398e54726aacbc39f75319"
+  },
+  "upstream_inputs_unchanged": true,
+  "interpretation": "Descriptive agreement only; no ATAC pathway p-values, activity labels, or validated regulatory links.",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "matplotlib": "3.11.2"
+  },
+  "executed_in_colab": false
+}

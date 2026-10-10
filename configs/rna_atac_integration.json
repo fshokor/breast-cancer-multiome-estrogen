@@ -1,0 +1,15 @@
+{
+  "rna_gsea_fdr_display": 0.05,
+  "min_mapped_genes_for_direction_summary": 10,
+  "distance_cutoffs_bp": [
+    100000,
+    10000
+  ],
+  "exclude_condition_exclusive": [
+    false,
+    true
+  ],
+  "gene_aggregation": "median across all eligible tested peaks; genes equally weighted",
+  "mapping": "single nearest gene only, identical under both coordinate conventions; exact RNA symbol match",
+  "scope": "descriptive, no new pathway significance or causal activity inference"
+}
