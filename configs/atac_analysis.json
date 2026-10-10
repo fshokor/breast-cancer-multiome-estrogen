@@ -1,0 +1,22 @@
+{
+  "seed": 42,
+  "embedding_min_cells": 20,
+  "embedding_max_fraction": 0.95,
+  "tfidf_scale": 10000,
+  "lsi_components": 50,
+  "lsi_iterations": 7,
+  "neighbor_lsi_components": 30,
+  "exclude_lsi1": true,
+  "neighbors": 15,
+  "leiden_resolution": 0.5,
+  "leiden_iterations": 2,
+  "umap_min_dist": 0.3,
+  "umap_iterations": 500,
+  "da_min_detected_cells": 10,
+  "da_min_fraction_either": 0.05,
+  "da_max_bh_q": 0.05,
+  "da_min_abs_fraction_difference": 0.05,
+  "da_depth_covariate": "standardized log1p(total peak counts)",
+  "da_test": "logistic efficient score test: treatment ~ depth + binary peak; cell-level exploratory",
+  "annotation_max_distance": 100000
+}

@@ -1,0 +1,109 @@
+{
+  "run_at_utc": "2026-10-10T21:05:18.673171+00:00",
+  "config": {
+    "seed": 42,
+    "embedding_min_cells": 20,
+    "embedding_max_fraction": 0.95,
+    "tfidf_scale": 10000,
+    "lsi_components": 50,
+    "lsi_iterations": 7,
+    "neighbor_lsi_components": 30,
+    "exclude_lsi1": true,
+    "neighbors": 15,
+    "leiden_resolution": 0.5,
+    "leiden_iterations": 2,
+    "umap_min_dist": 0.3,
+    "umap_iterations": 500,
+    "da_min_detected_cells": 10,
+    "da_min_fraction_either": 0.05,
+    "da_max_bh_q": 0.05,
+    "da_min_abs_fraction_difference": 0.05,
+    "da_depth_covariate": "standardized log1p(total peak counts)",
+    "da_test": "logistic efficient score test: treatment ~ depth + binary peak; cell-level exploratory",
+    "annotation_max_distance": 100000
+  },
+  "reference": {
+    "assembly": "hg38",
+    "assembly_source": "GEO GSM6418445 and GSM6418446 Assembly field",
+    "peak_coordinate_origin": "unresolved; annotations require agreement under both 0-based half-open and 1-based closed interpretations",
+    "annotation_url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeqCurated.txt.gz",
+    "annotation_file": "data/raw/reference/hg38_ncbiRefSeqCurated.txt.gz",
+    "annotation_sha256": "67090326b606658bdabdfe5f8dcb97b7943ac802c7945399522be7174ec021ca",
+    "reference_format": "UCSC genePredExt; txStart 0-based, txEnd exclusive",
+    "download_date": "2026-10-10",
+    "annotation_policy": "nearest TSS to peak midpoint, candidate genes only; report both coordinate interpretations and retain consensus"
+  },
+  "versions": {
+    "scanpy": "1.11.5",
+    "anndata": "0.12.19",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "statsmodels": "0.15.0",
+    "igraph": "1.0.0",
+    "matplotlib": "3.11.2"
+  },
+  "cell_lines": {
+    "MCF7": {
+      "cells": 6019,
+      "peaks": 206167,
+      "lsi_peaks": 152168,
+      "atac_clusters": 6,
+      "da_prevalence_pass": 30678,
+      "da_testable": 30678,
+      "da_candidates": 1400,
+      "candidate_direction_counts": {
+        "Vehicle": 740,
+        "E2": 660
+      },
+      "candidate_with_provisional_gene": 1318,
+      "RNA_ATAC_cluster_ARI": 0.5092344432098544,
+      "lsi1_depth_spearman": 0.9977899536437319,
+      "null_depth_model": {
+        "coefficients": [
+          0.18649231002366726,
+          -0.06356405188121836
+        ],
+        "converged": true,
+        "design": "treatment_E2 ~ intercept + standardized log1p(total peak counts)"
+      },
+      "source_sha256": "45eb112c94f8f46edbc058bc7c2083f3341104616ab2f54b54f5550ff71268ac",
+      "nb02_input_unchanged": true,
+      "cells_and_rna_labels_preserved": true,
+      "biological_replicates_identifiable": false,
+      "coordinate_origin_confirmed": false,
+      "annotation": "provisional nearest TSS, agreement under two coordinate conventions"
+    },
+    "T47D": {
+      "cells": 6562,
+      "peaks": 206167,
+      "lsi_peaks": 169654,
+      "atac_clusters": 9,
+      "da_prevalence_pass": 44380,
+      "da_testable": 44380,
+      "da_candidates": 2367,
+      "candidate_direction_counts": {
+        "Vehicle": 1556,
+        "E2": 811
+      },
+      "candidate_with_provisional_gene": 2241,
+      "RNA_ATAC_cluster_ARI": 0.2735734528251344,
+      "lsi1_depth_spearman": 0.9990847729158713,
+      "null_depth_model": {
+        "coefficients": [
+          0.174088749716647,
+          -0.10029791533373986
+        ],
+        "converged": true,
+        "design": "treatment_E2 ~ intercept + standardized log1p(total peak counts)"
+      },
+      "source_sha256": "7ba972d4ce358af8d75f68acefda55fab96a9fad297f7b6f88afa5e626a0cf2a",
+      "nb02_input_unchanged": true,
+      "cells_and_rna_labels_preserved": true,
+      "biological_replicates_identifiable": false,
+      "coordinate_origin_confirmed": false,
+      "annotation": "provisional nearest TSS, agreement under two coordinate conventions"
+    }
+  }
+}

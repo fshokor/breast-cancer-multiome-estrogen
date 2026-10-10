@@ -18,7 +18,7 @@ separate raw/processed data, and small reproducibility outputs in results/tables
 Future work will compare vehicle versus estrogen treatment using RNA differential
 expression, pathways, ATAC differential accessibility, motifs and RNA–ATAC concordance.
 Prediction will compare RNA only, ATAC only and RNA + ATAC, potentially using scMKL
-and MultiVI. Exploratory RNA DEG and GSEA are implemented in nb04; ATAC and predictive analyses remain future work.
+and MultiVI. Exploratory RNA DEG and GSEA are implemented in nb04; nb05 adds exploratory ATAC analysis; predictive analyses remain future work.
 
 ## Local WSL workflow
 Run from the repository root:
@@ -50,7 +50,7 @@ the final filename. Move a corrupt archive aside before rerunning.
 Raw data and environments are ignored by Git.
 
 ## Colab + Google Drive
-Upload the available nb00–nb04 notebooks to Colab and run in order.
+Upload the available nb00–nb05 notebooks to Colab and run in order.
 The notebooks contain generated copies of the canonical scripts, so a remote repository
 and manual source-file uploads are unnecessary. They mount Drive and use:
 
@@ -84,7 +84,7 @@ After editing canonical source, regenerate notebooks:
 | nb02 | Scanpy QC, paired preprocessing, RNA PCA/Leiden/UMAP |
 | nb03 | Cluster markers, quality, sensitivity and cell-state review |
 | nb04 | Exploratory E2 versus Vehicle RNA DEG + GSEA |
-| nb05 (future) | ATAC differential accessibility |
+| nb05 | ATAC QC, LSI/UMAP, exploratory differential accessibility |
 | nb06 (future) | ATAC regulatory/motif analysis |
 | nb07 (future) | RNA–ATAC pathway concordance |
 | nb08 (future) | RNA treatment prediction |
@@ -96,7 +96,7 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00 through nb04 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb05 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
 scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. Motif analysis and predictive modeling remain future work.
@@ -124,3 +124,7 @@ reference signatures, outputs and interpretation limits.
 ## Exploratory treatment DEG and GSEA
 Use [nb04](notebooks/nb04_treatment_deg_gsea.ipynb) for within-line E2 versus Vehicle rankings and Hallmark GSEA.
 See [the methods guide](TREATMENT_DEG_GSEA.md) for the replicate audit, statistical scope, settings and outputs.
+
+## ATAC analysis
+Use [nb05](notebooks/nb05_atac_analysis.ipynb) for ATAC-specific embeddings and depth-adjusted exploratory accessibility testing.
+See [the ATAC guide](ATAC_ANALYSIS.md) for methods, outputs, and provisional coordinate-sensitive annotations.

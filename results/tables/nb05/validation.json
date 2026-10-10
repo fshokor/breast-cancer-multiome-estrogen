@@ -1,0 +1,11 @@
+{
+  "executed_locally": true,
+  "colab_drive_mount_tested": false,
+  "new_tests_passed": 4,
+  "real_data_validation": "passed",
+  "nb02_inputs_unchanged": true,
+  "all_cells_peaks_counts_preserved": true,
+  "full_project_tests_passed": 23,
+  "figures_visually_reviewed": true,
+  "executed_notebook_error_free": true
+}

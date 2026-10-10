@@ -1,0 +1,11 @@
+{
+  "assembly": "hg38",
+  "assembly_source": "GEO GSM6418445 and GSM6418446 Assembly field",
+  "peak_coordinate_origin": "unresolved; annotations require agreement under both 0-based half-open and 1-based closed interpretations",
+  "annotation_url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeqCurated.txt.gz",
+  "annotation_file": "data/raw/reference/hg38_ncbiRefSeqCurated.txt.gz",
+  "annotation_sha256": "67090326b606658bdabdfe5f8dcb97b7943ac802c7945399522be7174ec021ca",
+  "reference_format": "UCSC genePredExt; txStart 0-based, txEnd exclusive",
+  "download_date": "2026-10-10",
+  "annotation_policy": "nearest TSS to peak midpoint, candidate genes only; report both coordinate interpretations and retain consensus"
+}
