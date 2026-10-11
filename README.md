@@ -18,7 +18,7 @@ separate raw/processed data, and small reproducibility outputs in results/tables
 Future work will compare vehicle versus estrogen treatment using RNA differential
 expression, pathways, ATAC differential accessibility, motifs and RNA–ATAC concordance.
 Prediction will compare RNA only, ATAC only and RNA + ATAC, potentially using scMKL
-and MultiVI. Exploratory RNA DEG and GSEA are implemented in nb04; nb05 adds exploratory ATAC analysis; predictive analyses remain future work.
+and MultiVI. Exploratory RNA DEG and GSEA are implemented in nb04; nb05 adds exploratory ATAC analysis; nb08 provides unexecuted unimodal MLP baselines for Colab.
 
 ## Local WSL workflow
 Run from the repository root:
@@ -50,7 +50,7 @@ the final filename. Move a corrupt archive aside before rerunning.
 Raw data and environments are ignored by Git.
 
 ## Colab + Google Drive
-Upload the available nb00–nb05 notebooks to Colab and run in order.
+Upload the available nb00–nb08 notebooks to Colab and run in order.
 The notebooks contain generated copies of the canonical scripts, so a remote repository
 and manual source-file uploads are unnecessary. They mount Drive and use:
 
@@ -58,8 +58,7 @@ and manual source-file uploads are unnecessary. They mount Drive and use:
 
 Downloads go directly to data/raw/GSE154873/; reports go to results/tables/.
 Colab uses its managed Python version; local Python is 3.11.
-Both notebooks require only the standard library for this milestone. nb00 includes
-an optional installation cell for future scientific packages.
+nb00 and nb01 use the standard library; later notebooks install scientific dependencies as needed.
 
 After editing canonical source, regenerate notebooks:
 
@@ -87,19 +86,19 @@ After editing canonical source, regenerate notebooks:
 | nb05 | ATAC QC, LSI/UMAP, exploratory differential accessibility |
 | nb06 | RNA–ATAC pathway comparison in both enrichment directions |
 | nb07 | Matched-background motif enrichment, both ATAC directions and sensitivity |
-| nb08 (future) | RNA treatment prediction |
-| nb09 (future) | ATAC treatment prediction |
-| nb10 (future) | scMKL multimodal prediction |
+| nb08 | RNA-only and ATAC-only MLP baselines; user-run Colab training |
+| nb09 (future) | RNA + ATAC integration using nb08 cell splits |
+| nb10 (future) | Additional multimodal model comparison (optional) |
 | nb11 (future) | MultiVI latent representation |
 | nb12 (future) | Model comparison |
 | nb13 (future) | Interpretability |
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00 through nb07 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb08 are available; nb08 is intentionally unexecuted. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
-scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. nb07 adds exploratory motif analysis; predictive modeling remains future work.
+scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. nb07 adds exploratory motif analysis; nb08 prepares unimodal MLP training for the user's Colab run.
 The roadmap can change.
 
 ## Validation
@@ -136,3 +135,8 @@ See [the integration guide](RNA_ATAC_INTEGRATION.md) for coverage, sensitivity a
 ## Motif analysis
 Use [nb07](notebooks/nb07_motif_analysis.ipynb) for motifs in opening and closing peaks, with matched backgrounds and coordinate sensitivity.
 See [the motif guide](MOTIF_ANALYSIS.md) for sequence resources, statistics and limits.
+
+## Unimodal MLP prediction
+Use [nb08](notebooks/nb08_unimodal_mlp.ipynb) for separate RNA-only and ATAC-only MLPs in both cell lines.
+The notebook has not been executed. See [the modeling guide](UNIMODAL_MLP.md) for settings,
+Colab instructions, paper differences, outputs and the nb09 integration handoff.

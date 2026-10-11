@@ -1,0 +1,24 @@
+{
+  "cell_lines": [
+    "MCF7",
+    "T47D"
+  ],
+  "seed": 42,
+  "test_fraction": 0.2,
+  "val_fraction_remaining": 0.1,
+  "max_features": 5000,
+  "min_train_detected": 3,
+  "hidden_sizes": [
+    512,
+    512,
+    512,
+    512,
+    512
+  ],
+  "dropout": 0.1,
+  "learning_rate": 0.001,
+  "batch_size": 256,
+  "max_epochs": 100,
+  "patience": 5,
+  "min_delta": 0.0001
+}
