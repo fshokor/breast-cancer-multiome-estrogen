@@ -1,0 +1,36 @@
+{
+  "retrieved_date": "2026-10-11",
+  "assembly": "hg38",
+  "motif_release": "JASPAR2024 CORE vertebrates non-redundant",
+  "genome_official_MD5_verified": true,
+  "resources": {
+    "hg38.2bit": {
+      "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit",
+      "path": "data/raw/reference/nb07/hg38.2bit",
+      "size": 835393456,
+      "sha256": "1f67aaa17a77b327738fe750ab37430a85dddf73c7d9189385ad1839259acec0",
+      "md5": "dcc3ea27079aa6dc3f9deccd7275e0f8"
+    },
+    "hg38_md5sum.txt": {
+      "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/md5sum.txt",
+      "path": "data/raw/reference/nb07/hg38_md5sum.txt",
+      "size": 720,
+      "sha256": "25c4eb8362dcfb6e9bff1a6ab1b9d11fcf2334dce8a6984a091c59851f6e1145",
+      "md5": "57face159b2845e2f58601d0050db7f7"
+    },
+    "JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt": {
+      "url": "https://jaspar2024.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt",
+      "path": "data/raw/reference/nb07/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt",
+      "size": 283814,
+      "sha256": "2a6c7c24afb0614ed418c9f02b68845adebf38f80f6cebabbcd5de804eaacb59",
+      "md5": "60d87dabb351150bd6394f35874ca2ea"
+    },
+    "hg38-blacklist.v2.bed.gz": {
+      "url": "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/hg38-blacklist.v2.bed.gz",
+      "path": "data/raw/reference/nb07/hg38-blacklist.v2.bed.gz",
+      "size": 5867,
+      "sha256": "c92e763af17271446194991e71917ac220593a5a3d40a06667be24178ef08cf2",
+      "md5": "83fe6bf8187a64dee8079b80f75ba289"
+    }
+  }
+}

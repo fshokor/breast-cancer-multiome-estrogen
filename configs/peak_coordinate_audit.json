@@ -1,0 +1,9 @@
+{
+  "audited_date": "2026-10-11",
+  "assembly": "hg38",
+  "coordinate_origin_confirmed": false,
+  "authors_code_url": "https://github.com/ohsu-cedar-comp-hub/BC_estrogen_TITAN_paper2022/blob/d8cbe099a81c7fb5bd148a845bacba17419feb8e/scripts/multiomics_analysis.md",
+  "authors_code_sha256": "a1cf1c42360678963a0f6b68ea7987d8bb39659d75bbcaf40be803398f53e77f",
+  "evidence": "Original code reads Cell Ranger H5 peaks into Signac and also creates a separate MACS2 peak assay. The exact export producing our GEO ATAC TSV row names is not documented in this file. This does not establish the coordinate origin of our matrices.",
+  "policy": "Do not declare either origin correct. Scan both [start,end) and [start-1,end) hypotheses on hg38; use the same peak IDs and matching pairs. Report coordinate sensitivity. The shorter interval is shared by both hypotheses; no definitive genomic binding-site exports."
+}

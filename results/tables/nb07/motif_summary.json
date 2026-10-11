@@ -1,0 +1,227 @@
+{
+  "run_at_utc": "2026-10-11T08:40:15.458256+00:00",
+  "config": {
+    "seed": 42,
+    "motif_site_pvalue": 0.0001,
+    "pseudocount_total_per_column": 0.01,
+    "sequence_background": [
+      0.25,
+      0.25,
+      0.25,
+      0.25
+    ],
+    "standard_chromosomes": [
+      "chr1",
+      "chr2",
+      "chr3",
+      "chr4",
+      "chr5",
+      "chr6",
+      "chr7",
+      "chr8",
+      "chr9",
+      "chr10",
+      "chr11",
+      "chr12",
+      "chr13",
+      "chr14",
+      "chr15",
+      "chr16",
+      "chr17",
+      "chr18",
+      "chr19",
+      "chr20",
+      "chr21",
+      "chr22",
+      "chrX",
+      "chrY"
+    ],
+    "coordinate_hypotheses": [
+      "zero_based_half_open",
+      "one_based_closed"
+    ],
+    "minimum_matched_pairs": 20,
+    "matching_calipers": {
+      "gc_fraction": 0.05,
+      "log_length": 0.25,
+      "logit_accessibility": 0.5
+    },
+    "matching_nearest_candidates": 200,
+    "minimum_foreground_match_fraction": 0.8,
+    "maximum_absolute_standardized_mean_difference": 0.1,
+    "motif_enrichment_fdr": 0.05,
+    "sensitivity_scenarios": [
+      "all_candidates",
+      "shared_detection"
+    ],
+    "site_scan_window": 7,
+    "method": "one-sided exact matched-pair binomial motif enrichment; BH within comparison and across all comparisons",
+    "interpretation": "exploratory sequence enrichment, not binding/activity or replicate-supported treatment inference"
+  },
+  "references": {
+    "retrieved_date": "2026-10-11",
+    "assembly": "hg38",
+    "motif_release": "JASPAR2024 CORE vertebrates non-redundant",
+    "genome_official_MD5_verified": true,
+    "resources": {
+      "hg38.2bit": {
+        "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit",
+        "path": "data/raw/reference/nb07/hg38.2bit",
+        "size": 835393456,
+        "sha256": "1f67aaa17a77b327738fe750ab37430a85dddf73c7d9189385ad1839259acec0",
+        "md5": "dcc3ea27079aa6dc3f9deccd7275e0f8"
+      },
+      "hg38_md5sum.txt": {
+        "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/md5sum.txt",
+        "path": "data/raw/reference/nb07/hg38_md5sum.txt",
+        "size": 720,
+        "sha256": "25c4eb8362dcfb6e9bff1a6ab1b9d11fcf2334dce8a6984a091c59851f6e1145",
+        "md5": "57face159b2845e2f58601d0050db7f7"
+      },
+      "JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt": {
+        "url": "https://jaspar2024.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt",
+        "path": "data/raw/reference/nb07/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt",
+        "size": 283814,
+        "sha256": "2a6c7c24afb0614ed418c9f02b68845adebf38f80f6cebabbcd5de804eaacb59",
+        "md5": "60d87dabb351150bd6394f35874ca2ea"
+      },
+      "hg38-blacklist.v2.bed.gz": {
+        "url": "https://raw.githubusercontent.com/Boyle-Lab/Blacklist/master/lists/hg38-blacklist.v2.bed.gz",
+        "path": "data/raw/reference/nb07/hg38-blacklist.v2.bed.gz",
+        "size": 5867,
+        "sha256": "c92e763af17271446194991e71917ac220593a5a3d40a06667be24178ef08cf2",
+        "md5": "83fe6bf8187a64dee8079b80f75ba289"
+      }
+    }
+  },
+  "coordinate_audit": {
+    "audited_date": "2026-10-11",
+    "assembly": "hg38",
+    "coordinate_origin_confirmed": false,
+    "authors_code_url": "https://github.com/ohsu-cedar-comp-hub/BC_estrogen_TITAN_paper2022/blob/d8cbe099a81c7fb5bd148a845bacba17419feb8e/scripts/multiomics_analysis.md",
+    "authors_code_sha256": "a1cf1c42360678963a0f6b68ea7987d8bb39659d75bbcaf40be803398f53e77f",
+    "evidence": "Original code reads Cell Ranger H5 peaks into Signac and also creates a separate MACS2 peak assay. The exact export producing our GEO ATAC TSV row names is not documented in this file. This does not establish the coordinate origin of our matrices.",
+    "policy": "Do not declare either origin correct. Scan both [start,end) and [start-1,end) hypotheses on hg38; use the same peak IDs and matching pairs. Report coordinate sensitivity. The shorter interval is shared by both hypotheses; no definitive genomic binding-site exports."
+  },
+  "n_motifs": 879,
+  "n_union_tested_peaks": 48976,
+  "n_sequence_eligible_peaks": 48636,
+  "sequence_qc_counts": {
+    "eligible": 48636,
+    "overlaps_blacklist_under_at_least_one_hypothesis": 324,
+    "nonstandard_chromosome": 14,
+    "ambiguous_sequence": 2
+  },
+  "coordinate_changed_presence_entries": 7971,
+  "coordinate_changed_peaks": 4660,
+  "source_sha256": {
+    "data/processed/MCF7_nb05_da_all.tsv": "7d944fc284395f29d81facae510ff03d86e177be3b102540bd900d700541de20",
+    "data/processed/T47D_nb05_da_all.tsv": "ee164680eabe83f130fea32a011dcafc7504cf9cfb398e54726aacbc39f75319",
+    "results/tables/nb04/MCF7_deg_all.tsv": "2115512316f39b164d8f0d73088444ec0ebe7e7d0e4017881444a33a9d2d2beb",
+    "results/tables/nb04/T47D_deg_all.tsv": "f6be47ad8f8e9948b51ddbbd70d5ed075d1042cca50fbd6e9854020398e933a6",
+    "results/tables/nb06/MCF7_provisional_peak_gene_links.tsv": "e9263fad2b18a820cb0841c0cdd3892675f5ba5b1a9a81b47f8f14e442b5a205",
+    "results/tables/nb06/T47D_provisional_peak_gene_links.tsv": "b1b14577631b14620d79f88232f10d18a1fa6d5760c0bb9429f782a81ed361a9",
+    "results/tables/nb06/all_pathway_scenarios.tsv": "717a7341338e3032e38f8cc49bea3c5e74add498e8c257c49189f57dea0adc28",
+    "configs/hallmark_v7.json": "277d4d7ad0e9c0cc20f12f41fbe69cdc49bcee671c6b1579bcffe6f2882018c7"
+  },
+  "upstream_inputs_unchanged": true,
+  "matching": [
+    {
+      "cell_line": "MCF7",
+      "scenario": "all_candidates",
+      "direction": "E2",
+      "eligible_foreground": 651,
+      "available_controls": 29053,
+      "matched_pairs": 594,
+      "foreground_match_fraction": 0.9124423963133641,
+      "matching_acceptable": false
+    },
+    {
+      "cell_line": "MCF7",
+      "scenario": "all_candidates",
+      "direction": "Vehicle",
+      "eligible_foreground": 737,
+      "available_controls": 29053,
+      "matched_pairs": 679,
+      "foreground_match_fraction": 0.921302578018996,
+      "matching_acceptable": true
+    },
+    {
+      "cell_line": "MCF7",
+      "scenario": "shared_detection",
+      "direction": "E2",
+      "eligible_foreground": 343,
+      "available_controls": 29053,
+      "matched_pairs": 341,
+      "foreground_match_fraction": 0.9941690962099126,
+      "matching_acceptable": true
+    },
+    {
+      "cell_line": "MCF7",
+      "scenario": "shared_detection",
+      "direction": "Vehicle",
+      "eligible_foreground": 478,
+      "available_controls": 29053,
+      "matched_pairs": 474,
+      "foreground_match_fraction": 0.9916317991631799,
+      "matching_acceptable": true
+    },
+    {
+      "cell_line": "T47D",
+      "scenario": "all_candidates",
+      "direction": "E2",
+      "eligible_foreground": 809,
+      "available_controls": 41737,
+      "matched_pairs": 725,
+      "foreground_match_fraction": 0.896168108776267,
+      "matching_acceptable": false
+    },
+    {
+      "cell_line": "T47D",
+      "scenario": "all_candidates",
+      "direction": "Vehicle",
+      "eligible_foreground": 1544,
+      "available_controls": 41737,
+      "matched_pairs": 1464,
+      "foreground_match_fraction": 0.9481865284974094,
+      "matching_acceptable": true
+    },
+    {
+      "cell_line": "T47D",
+      "scenario": "shared_detection",
+      "direction": "E2",
+      "eligible_foreground": 227,
+      "available_controls": 41737,
+      "matched_pairs": 222,
+      "foreground_match_fraction": 0.9779735682819384,
+      "matching_acceptable": false
+    },
+    {
+      "cell_line": "T47D",
+      "scenario": "shared_detection",
+      "direction": "Vehicle",
+      "eligible_foreground": 1133,
+      "available_controls": 41737,
+      "matched_pairs": 1125,
+      "foreground_match_fraction": 0.9929390997352162,
+      "matching_acceptable": true
+    }
+  ],
+  "matching_acceptability_required_for_priority": true,
+  "primary_priority_counts": {
+    "MCF7/E2": 0,
+    "MCF7/Vehicle": 1,
+    "T47D/E2": 0,
+    "T47D/Vehicle": 4
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "scipy": "1.17.1",
+    "statsmodels": "0.15.0",
+    "matplotlib": "3.11.2",
+    "MOODS-python": "1.9.4.1",
+    "py2bit": "0.3.3"
+  },
+  "executed_in_colab": false
+}

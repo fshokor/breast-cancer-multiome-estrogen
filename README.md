@@ -86,7 +86,7 @@ After editing canonical source, regenerate notebooks:
 | nb04 | Exploratory E2 versus Vehicle RNA DEG + GSEA |
 | nb05 | ATAC QC, LSI/UMAP, exploratory differential accessibility |
 | nb06 | RNA–ATAC pathway comparison in both enrichment directions |
-| nb07 (future) | ATAC regulatory/motif analysis |
+| nb07 | Matched-background motif enrichment, both ATAC directions and sensitivity |
 | nb08 (future) | RNA treatment prediction |
 | nb09 (future) | ATAC treatment prediction |
 | nb10 (future) | scMKL multimodal prediction |
@@ -96,10 +96,10 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00 through nb06 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb07 are available. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
-scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. Motif analysis and predictive modeling remain future work.
+scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. nb07 adds exploratory motif analysis; predictive modeling remains future work.
 The roadmap can change.
 
 ## Validation
@@ -132,3 +132,7 @@ See [the ATAC guide](ATAC_ANALYSIS.md) for methods, outputs, and provisional coo
 ## RNA and ATAC pathway comparison
 Use [nb06](notebooks/nb06_rna_atac_integration.ipynb) to compare both RNA GSEA directions with provisional nearby ATAC evidence.
 See [the integration guide](RNA_ATAC_INTEGRATION.md) for coverage, sensitivity analyses and interpretation limits.
+
+## Motif analysis
+Use [nb07](notebooks/nb07_motif_analysis.ipynb) for motifs in opening and closing peaks, with matched backgrounds and coordinate sensitivity.
+See [the motif guide](MOTIF_ANALYSIS.md) for sequence resources, statistics and limits.

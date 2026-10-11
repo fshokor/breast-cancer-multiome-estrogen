@@ -1,0 +1,9 @@
+cell_line	scenario	direction	eligible_foreground	available_controls	matched_pairs	foreground_match_fraction	matching_acceptable
+MCF7	all_candidates	E2	651	29053	594	0.912442396	False
+MCF7	all_candidates	Vehicle	737	29053	679	0.921302578	True
+MCF7	shared_detection	E2	343	29053	341	0.994169096	True
+MCF7	shared_detection	Vehicle	478	29053	474	0.991631799	True
+T47D	all_candidates	E2	809	41737	725	0.896168109	False
+T47D	all_candidates	Vehicle	1544	41737	1464	0.948186528	True
+T47D	shared_detection	E2	227	41737	222	0.977973568	False
+T47D	shared_detection	Vehicle	1133	41737	1125	0.9929391	True

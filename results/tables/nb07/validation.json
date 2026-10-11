@@ -1,0 +1,15 @@
+{
+  "executed_locally": true,
+  "colab_drive_mount_tested": false,
+  "full_project_tests_passed": 33,
+  "real_data_validation": "passed",
+  "upstream_inputs_unchanged": true,
+  "both_coordinate_hypotheses_tested": true,
+  "all_16_comparisons_retained": true,
+  "unique_backgrounds_and_calipers_verified": true,
+  "figures_visually_reviewed": true,
+  "executed_notebook_error_free": true,
+  "embedded_implementation_matches_source": true,
+  "sensitivity_pathway_context_present": true,
+  "priority_motif_IDs_agree_between_coordinate_hypotheses": true
+}

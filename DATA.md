@@ -150,3 +150,16 @@ The GEO family SOFT records identify GSM6418443 and GSM6418444 as the E2 and Veh
 
 ### nb05 genome and coordinate follow-up
 GEO ATAC sample records GSM6418445/6 explicitly state hg38, supporting that assembly for the processed data. Coordinate origin in the peak names is still unresolved. nb05 preserves coordinates and supplies only provisional nearest-TSS gene candidates agreeing under both zero-based half-open and one-based closed interpretations. No definitive promoter/motif overlap or BED export is made. See ATAC_ANALYSIS.md and configs/atac_reference.json.
+
+
+## nb07 sequence and motif references (11 October 2026)
+nb07 uses checksum-frozen UCSC hg38 2bit sequence, JASPAR2024 CORE vertebrate
+non-redundant motifs, and the hg38 blacklist v2. URLs and SHA256 values are in
+configs/motif_references.json; the genome also passed UCSC's official MD5 check.
+The raw references are under ignored data/raw/reference/nb07.
+
+The original study code audit did not establish the coordinate convention of
+the exact GEO TSV export. configs/peak_coordinate_audit.json records the pinned
+source and uncertainty. nb07 tests both coordinate hypotheses, preserves upstream
+peak IDs/counts, and reports sequence-QC exclusions and sensitivity. It does not
+retroactively declare nb05/nb06 annotations definitive.
