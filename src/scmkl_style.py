@@ -707,36 +707,58 @@ def export_comparison(base,baseline,out,manifests,config):
     print("Share:",archive)
     return summary,Path(archive)
 
-def reuse_kernel(base,out,artifacts,manifest,line,modality,config,cached_run_id):
-    """Reuse complete kernels only when preprocessing, references and splits match."""
-    pointer=out/f"{line}_{modality}_cache.json"
-    candidates=[(out,artifacts)]
-    if pointer.exists():
+def resolve_kernel_origin(base,candidate_out,candidate_artifacts,line,modality):
+    """Follow source_run at every hop; canonical paths support relocated Drive roots."""
+    current_out=Path(candidate_out);current_artifacts=Path(candidate_artifacts)
+    chain=[];seen=set()
+    while True:
+        if current_out.name in seen:
+            raise ValueError("Cyclic kernel cache references: "+" -> ".join([x.name for x in chain]+[current_out.name]))
+        seen.add(current_out.name);chain.append(current_out)
+        if not current_out.is_dir():
+            raise FileNotFoundError(f"Referenced kernel run is missing: {current_out}. Restore this run; no kernels were rebuilt.")
+        pointer=current_out/f"{line}_{modality}_cache.json"
+        if not pointer.exists():break
         origin=json.loads(pointer.read_text())["source_run"]
-        if origin != out.name:
-            candidates=[(Path(base)/"results"/"tables"/"nb09"/origin,
-                         Path(base)/"data"/"processed"/"nb09"/origin)]
-            if not (candidates[0][0]/f"{line}_{modality}_kernels.csv").exists():
-                raise FileNotFoundError("Previously reused kernel source is missing; preserve the old run.")
+        if not isinstance(origin,str) or not origin or "/" in origin or "\\" in origin or origin in (".",".."):
+            raise ValueError("Invalid kernel source_run identifier.")
+        if origin==current_out.name:break
+        current_out=Path(base)/"results"/"tables"/"nb09"/origin
+        current_artifacts=Path(base)/"data"/"processed"/"nb09"/origin
+    return current_out,current_artifacts,chain
+
+def reuse_kernel(base,out,artifacts,manifest,line,modality,config,cached_run_id):
+    """Resolve transitive pointers, then validate every reference before reuse."""
+    candidates=[(out,artifacts)]
     if cached_run_id and cached_run_id != out.name:
         candidates.append((Path(base)/"results"/"tables"/"nb09"/cached_run_id,
                            Path(base)/"data"/"processed"/"nb09"/cached_run_id))
-    for old_out,old_artifacts in candidates:
+    for candidate_out,candidate_artifacts in candidates:
+        if not (candidate_out/f"{line}_{modality}_kernels.csv").exists() and not (candidate_out/f"{line}_{modality}_cache.json").exists():
+            continue
+        old_out,old_artifacts,chain=resolve_kernel_origin(base,candidate_out,candidate_artifacts,line,modality)
         path=old_artifacts/f"{line}_{modality}_rff.npy"
         table_path=old_out/f"{line}_{modality}_kernels.csv"
-        if not table_path.exists():
-            continue
-        if not path.exists():
-            raise FileNotFoundError(f"Kernel completion table exists but array is missing: {path}")
-        old_config=json.loads((old_out/"config.json").read_text())
-        if {k:v for k,v in old_config.items() if k!="alpha_ratios"} != {k:v for k,v in config.items() if k!="alpha_ratios"}:
-            raise ValueError("Cached kernel construction settings differ.")
-        for name in ("hallmark_reference.json","motif_references.json","motif_scan_config.json",
-                     "nb08_config.json","nb08_handoff.json"):
-            if json.loads((old_out/name).read_text()) != json.loads((out/name).read_text()):
-                raise ValueError(f"Cached reference/baseline mismatch: {name}")
-        if sha256(old_out/f"{line}_splits.csv") != sha256(out/f"{line}_splits.csv"):
-            raise ValueError("Cached cell split mismatch.")
+        route=" -> ".join(x.name for x in chain)
+        if not table_path.is_file() or not path.is_file():
+            raise FileNotFoundError(
+                f"{line} {modality}: resolved cache chain {route}, but an original artifact is missing. "
+                f"Required table: {table_path}; required array: {path}. "
+                "Restore the original results and data/processed folders; the results ZIP alone does not include arrays. "
+                "No saved models were changed and no replacement kernels were generated.")
+        for link in chain:
+            old_config=json.loads((link/"config.json").read_text())
+            if {k:v for k,v in old_config.items() if k!="alpha_ratios"} != {k:v for k,v in config.items() if k!="alpha_ratios"}:
+                raise ValueError(f"Cached kernel construction settings differ: {link.name}.")
+            for name in ("hallmark_reference.json","motif_references.json","motif_scan_config.json",
+                         "nb08_config.json","nb08_handoff.json"):
+                if json.loads((link/name).read_text()) != json.loads((out/name).read_text()):
+                    raise ValueError(f"Cached reference/baseline mismatch: {link.name}/{name}")
+            if sha256(link/f"{line}_splits.csv") != sha256(out/f"{line}_splits.csv"):
+                raise ValueError(f"Cached cell split mismatch: {link.name}.")
+            linked_table=link/f"{line}_{modality}_kernels.csv"
+            if linked_table.exists() and sha256(linked_table)!=sha256(table_path):
+                raise ValueError(f"Cached group table differs from its origin: {link.name}.")
         table=pd.read_csv(table_path)
         array=np.load(path,mmap_mode="r")
         if array.shape != (len(manifest),len(table)*2*config["rff_frequencies"]):
@@ -757,7 +779,7 @@ def reuse_kernel(base,out,artifacts,manifest,line,modality,config,cached_run_id)
             if modality=="ATAC" and audit.exists():shutil.copy2(audit,out/audit.name)
         save_json(out/f"{line}_{modality}_cache.json",{"source_run":old_out.name,
                   "array":str(path),"maps":str(maps),"array_bytes":path.stat().st_size})
-        print(f"{line} {modality}: reusing completed kernels from {old_out.name}.")
+        print(f"{line} {modality}: cache chain {route}; reusing completed kernels from {old_out.name}.")
         return path,table
     return None
 

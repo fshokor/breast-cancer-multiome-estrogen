@@ -68,5 +68,5 @@ assert '=="validation"' in review and '=="test"' not in review
 assert "base-contribution" in review
 assert "do not reconstruct model scores" in review
 assert sum(c.cell_type=="code" and c.source.startswith("RNA_REVIEW = review_rna_pathways") for c in nb.cells)==2
-assert 'RESUME_RUN_ID="20261012T114858_335840Z"' in "\n".join(c.source for c in nb.cells)
+assert 'RESUME_RUN_ID="20261012T184252_110749Z"' in "\n".join(c.source for c in nb.cells)
 print("PASS: completed-run resume, validation-only pathway ablation and additive contribution reconstruction guard.")

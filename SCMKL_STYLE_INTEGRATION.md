@@ -170,3 +170,18 @@ fidelity would require equivalent explanation checks for nb08.
 The results ZIP contains four models per cell line: two nb08 MLP baselines, RNA-only kernels,
 and integrated kernels. The previous nb10 report covers its original models only.
 This extension was authored without executing notebook cells, feature construction or fitting.
+
+## Cache-reference repair
+The cache loader now follows source_run pointers at every hop, including the selected external
+CACHED_KERNEL_RUN_ID. It resolves paths under the current project root instead of using obsolete
+absolute paths, detects cycles, and validates settings, references, splits and group-table identity
+at every hop. It stops with the resolved original path if required artifacts are absent; it does
+not silently rebuild kernels underneath saved coefficients.
+
+The repaired notebook defaults to resuming the interrupted run 20261012T184252_110749Z.
+That run stopped before training. To skip the previously completed integrated fits and train only
+the added RNA-only models, select RESUME_RUN_ID=20261012T114858_335840Z instead.
+Keep CACHED_KERNEL_RUN_ID=20261012T114858_335840Z and preserve the earlier folders it references.
+Rerun setup and the Implementation cell before retrying kernel construction.
+Filesystem-only regression tests cover external caches, transitive chains, cycles, relocated roots
+and missing sources without loading scientific data or running models.

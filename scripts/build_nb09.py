@@ -16,7 +16,7 @@ md("""# nb09 — scMKL-style RNA-only and RNA+ATAC pathway models
 **Prepared for you to run in Colab. This notebook has not been executed.**
 
 Compare **RNA-only and RNA+ATAC grouped-kernel models for MCF7 and T47D**.
-The default resumes your completed run and adds just two RNA-only fits; completed integrated fits are skipped.
+The default resumes the run that stopped during cache loading (20261012T184252_110749Z).\nThat new run has no completed fits yet. To reuse completed integrated fits and add only RNA-only,\nset RESUME_RUN_ID to 20261012T114858_335840Z. Completed fits in the chosen run are skipped.
 No hyperparameter search is performed. Compare these models with the saved nb08 MLP baselines. Reuse the exact nb08 training, validation and
 test cells, input data and training-selected features. E2 is always the positive class.
 
@@ -130,9 +130,9 @@ else:
               str(here.parent if here.name=="notebooks" else here)))
 
 NB08_RUN_ID="20261011T103750_408739Z"
-# Resume the completed run to preserve and skip its integrated fits.
+# Resume the run that stopped during cache loading.\n# To add RNA-only fits to the already completed run instead, use 20261012T114858_335840Z.
 # Leave blank only if intentionally starting a new run (which fits both modes).
-RESUME_RUN_ID="20261012T114858_335840Z"
+RESUME_RUN_ID="20261012T184252_110749Z"
 # Preserve this run and any earlier kernel folders referenced by its cache pointers.
 CACHED_KERNEL_RUN_ID="20261012T114858_335840Z"
 RUN_ID=RESUME_RUN_ID or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
