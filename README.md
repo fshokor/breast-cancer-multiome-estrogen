@@ -50,7 +50,7 @@ the final filename. Move a corrupt archive aside before rerunning.
 Raw data and environments are ignored by Git.
 
 ## Colab + Google Drive
-Upload the available nb00–nb09 notebooks to Colab and run in order.
+Upload the available nb00–nb10 notebooks to Colab and run in order.
 The notebooks contain generated copies of the canonical scripts, so a remote repository
 and manual source-file uploads are unnecessary. They mount Drive and use:
 
@@ -88,14 +88,14 @@ After editing canonical source, regenerate notebooks:
 | nb07 | Matched-background motif enrichment, both ATAC directions and sensitivity |
 | nb08 | RNA-only and ATAC-only MLP baselines; user-run Colab training |
 | nb09 | scMKL-style RNA + ATAC integration and unimodal controls; user-run Colab |
-| nb10 (future) | Additional multimodal model comparison (optional) |
+| nb10 | Saved-model comparison and biological interpretation; user-run Colab |
 | nb11 (future) | MultiVI latent representation |
 | nb12 (future) | Model comparison |
 | nb13 (future) | Interpretability |
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00 through nb09 are available. nb08 contains the user's Colab results; nb09 is intentionally unexecuted. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb10 are available. nb08 contains the user's Colab results; nb09 and nb10 were prepared without local execution. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
 scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. nb07 adds exploratory motif analysis; nb08 prepares unimodal MLP training for the user's Colab run.
@@ -146,3 +146,9 @@ Use [nb09](notebooks/nb09_scmkl_style_integration.ipynb) for grouped Gaussian ke
 It reuses nb08 splits and compares RNA, ATAC and integration, alongside the saved MLP results.
 This is an adapted implementation, not an exact scMKL reproduction. It has not been executed.
 See [the integration modeling guide](SCMKL_STYLE_INTEGRATION.md) for Colab requirements and methods.
+
+## Model comparison and interpretation
+Use [nb10](notebooks/nb10_model_comparison_interpretation.ipynb) after nb09 finishes.
+It verifies saved predictions, compares performance and selected groups, and joins optional earlier
+biological findings. No models are trained or tuned. See [the review guide](MODEL_COMPARISON.md).
+The notebook is intentionally unexecuted.
