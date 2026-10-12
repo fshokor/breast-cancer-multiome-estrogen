@@ -22,7 +22,8 @@ missing files download with frozen SHA256 verification. The genome is ~835 MB.
 
 ## Model
 
-Within each cell line, compare RNA-only, ATAC-only and joint grouped-kernel models.
+Fit exactly one joint RNA + ATAC model within each cell line: two fits total.
+No unimodal kernel models are trained. Compare with the existing nb08 MLP baselines.
 Retain the core scMKL design: biological feature groups, Gaussian random Fourier
 features, and group-lasso regression with targets Vehicle=-1 and E2=+1.
 
@@ -47,10 +48,11 @@ exp(-squared Euclidean distance/(2*sigma^2)); frequencies have SD 1/sigma.
 Use celer GroupLasso with equal group penalties and an intercept:
 squared error/(2n) + alpha * sum(group coefficient L2 norms).
 The alpha maximum is max(group norms of Z_train.T @ centered_y / n).
-Search ratios [1, .3, .1, .03, .01] of that training-only maximum.
-Select by validation AUROC, then validation AP, fewer groups, stronger penalty.
-Reject nonconverged candidates; fail if all candidates fail. Retain the selected
-training fit without refitting on validation. Only then score test cells.
+Fix the ratio at 0.1 of the training-only maximum; there is no search.
+This starting setting comes from the best recorded MCF7 ATAC validation result in
+the interrupted run, not an established optimum for either integrated model.
+Validation is diagnostic only. Require convergence and retain the training fit
+without refitting on validation. Only then score test cells.
 No MLP learning rate or neural-network epochs apply here.
 
 Decision scores are not probabilities. Use raw-score AUROC/AP and a fixed zero
@@ -68,8 +70,8 @@ package and not an exact reproduction of the paper:
 
 Adaptations include fixed nb08 splits/preprocessing/features, 32-frequency Gaussian
 maps, median bandwidths with standard RBF scaling, train-centered unit-energy
-blocks, group-norm alpha maximum, current frozen reference groups and validation
-selection rather than repeated nested cross-validation. Published scMKL scores
+blocks, group-norm alpha maximum, current frozen reference groups and a fixed
+alpha rather than repeated nested cross-validation. Published scMKL scores
 are not expected to be numerically reproduced.
 
 ## Outputs
@@ -97,3 +99,29 @@ Build: python scripts/build_nb09.py.
 Static check: python scripts/validate_nb09_static.py.
 These commands create/check notebook files; they do not execute notebook cells.
 Do not run this notebook locally: the user will run it in Colab.
+
+
+## Restart after the interruption
+
+Your partially executed notebook is preserved in
+notebooks/archive/nb09_partial_20261012T085524_321769Z.ipynb.
+
+Open the updated nb09 in Colab. For its first run, leave RESUME_RUN_ID empty and
+keep CACHED_KERNEL_RUN_ID="20261012T085524_321769Z". Run all cells.
+A new integrated-only output run is created. Completed RNA/ATAC kernels from the
+old run are reused after configuration, reference, split and shape checks.
+Missing kernels (for example T47D) are built normally. Old unimodal models are
+not needed, and the interrupted ATAC search is not resumed or refitted.
+
+Keep the old results and data/processed/nb09 folders: reused feature maps remain
+there and the new model specification records their locations.
+
+For another disconnect, set RESUME_RUN_ID to the NEW integrated run ID and run all.
+A completed fit is checkpointed before evaluation/plotting. Completed models are
+skipped. A solver call interrupted before returning must be fitted again; its
+internal iterations are not checkpointed. Partial kernel construction restarts
+that modality, while completed kernels are retained.
+
+nb10 was updated to expect three models per cell line: two saved MLPs and one
+integrated model. This comparison changes both model family and input modalities,
+so it does not isolate the effect of adding ATAC alone.

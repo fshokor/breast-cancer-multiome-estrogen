@@ -29,11 +29,10 @@ Missing context is recorded, not treated as negative biological evidence.
 Verify split checksums against the nb08 handoff, paired cell IDs, E2-positive labels,
 classification thresholds, and recomputed versus saved metrics. Reorder predictions
 by cell ID if necessary; never compare unmatched rows.
-Verify the selected regularization candidate converged and matches the documented
-validation selection rule. Candidate warnings remain in the solver review table.
+Verify the selected regularization candidate converged and matches the fixed-alpha
+configuration (one validation diagnostic record). Candidate warnings remain in the solver review table.
 
-Compare five models in each cell line: RNA/ATAC MLPs, RNA/ATAC grouped-kernel controls,
-and joint grouped kernels. Report AUROC, average precision, accuracy, balanced
+Compare three models in each cell line: saved RNA/ATAC MLPs and joint grouped kernels. Report AUROC, average precision, accuracy, balanced
 accuracy, F1 and confusion counts. Compute paired error corrections/new errors and
 descriptive joint-minus-reference metric differences. No significance tests or CIs.
 
@@ -41,7 +40,7 @@ Validation/test gaps cover grouped-kernel models only, because nb09's portable
 export does not contain the MLP validation predictions. Raw kernel scores are not
 probabilities, so log loss/Brier scores are not compared across model families.
 
-Review representative group weights in unimodal/joint models and preserve aliases
+Review representative group weights in integrated models and preserve aliases
 for identical memberships. Join Hallmark names to GSEA and nb06 summaries and
 JASPAR IDs to nb07 enrichment. Preserve every scenario, direction, coordinate
 hypothesis and matching-QC flag. Do not select the most favorable enrichment.

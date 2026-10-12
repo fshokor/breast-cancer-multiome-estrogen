@@ -10,12 +10,12 @@ md("""# nb10 — Model comparison and biological interpretation
 **Prepared in advance and intentionally unexecuted. Run this after nb09 finishes.**
 
 This notebook reviews saved outputs only: **it does not train, tune, rescore raw data or load model
-checkpoints**. Compare the RNA/ATAC MLP baselines with RNA-only, ATAC-only and integrated
-scMKL-style models, separately in MCF7 and T47D.
+checkpoints**. Compare the RNA/ATAC MLP baselines with the integrated
+scMKL-style model, separately in MCF7 and T47D.
 
 Questions:
 - Does integration improve AUROC, average precision and classification errors?
-- Does it improve over RNA kernels as well as the RNA MLP?
+- Does it improve over the saved RNA and ATAC MLP baselines?
 - Were the selected fits converged, and how do validation/test scores compare?
 - Which pathway and motif groups were selected? How do they relate to the earlier biological findings?
 
@@ -42,7 +42,7 @@ AUROC and average precision use continuous scores. Kernel scores are uncalibrate
 does not compare their log loss/Brier scores with MLP probabilities. Error correction is paired by
 cell; it reflects the fixed thresholds and is not a significance test.
 
-Validation/test gaps and solver checks concern the three grouped-kernel models. nb09's portable
+Validation/test gaps and solver checks concern the integrated model for each cell line. nb09's portable
 export does not include the MLP validation predictions, so this notebook does not invent them.
 
 Group norms are **unsigned predictive weights**, not pathway activity, TF binding or causal effects.
@@ -103,7 +103,7 @@ print("Output directory:",OUTPUT)
 """),
 md("""## Verify predictions, performance and model selection
 Check split checksums, exact cells/labels, saved classification thresholds, metric consistency,
-selected-candidate convergence and the validation selection rule. Reorder predictions by cell ID
+fit convergence and the fixed-alpha validation record. Reorder predictions by cell ID
 when needed; never compare unpaired rows.
 """),
 code("""METRICS, GAPS, DIFFERENCES, PREDICTIONS = review_predictions(SOURCE,OUTPUT,INPUTS,HANDOFF)
@@ -113,13 +113,12 @@ display(GAPS)
 display(DIFFERENCES)
 """),
 md("""## Performance figures
-ROC and precision–recall curves compare all five models. Generalization panels show the three
-grouped-kernel models. Positive integration AUROC/AP differences mean a higher point estimate;
+ROC and precision–recall curves compare the three models. Generalization panels show each line’s integrated model. Positive integration AUROC/AP differences mean a higher point estimate;
 they do not establish statistical significance. Paired error tables identify corrections and new errors.
 """),
 code("performance_plots(METRICS,GAPS,PREDICTIONS,OUTPUT)"),
 md("""## Selected pathways and motifs
-Review all model weights, compare unimodal/joint selection, and retain aliases for identical kernel
+Review all model weights, inspect integrated-model selection, and retain aliases for identical kernel
 memberships. Plots show representative groups only, avoiding duplicate motif labels.
 Coefficient magnitudes are not percentages of biological contribution or direct evidence of regulation.
 """),

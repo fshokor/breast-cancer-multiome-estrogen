@@ -15,8 +15,9 @@ md("""# nb09 — scMKL-style RNA + ATAC integration
 
 **Prepared for you to run in Colab. This notebook has not been executed.**
 
-Compare **RNA-only, ATAC-only, and RNA + ATAC** grouped-kernel models separately in MCF7 and T47D,
-then compare them with your nb08 MLP baselines. Reuse the exact nb08 training, validation and
+Train **one RNA + ATAC grouped-kernel model for MCF7 and one for T47D**.
+There is no unimodal kernel training and no hyperparameter search.
+Compare the two integrated models with the saved nb08 MLP baselines. Reuse the exact nb08 training, validation and
 test cells, input data and training-selected features. E2 is always the positive class.
 
 This is an **scMKL-style implementation**, not the official scMKL package and not an exact
@@ -56,17 +57,17 @@ md("""## Model and comparison plan
 5. For each group, estimate a Gaussian bandwidth using the median positive pairwise distance
    among up to 256 **training cells**. Use 32 random frequencies, giving 64 cosine/sine features.
    Center and normalize each block using training cells to give comparable kernel scales.
-6. Fit group lasso to targets Vehicle = -1, E2 = +1, separately for RNA, ATAC and joint input.
-   Search five regularization ratios using **validation AUROC**, then validation average precision,
-   fewer groups and stronger regularization as tie-breakers. Only converged fits are eligible.
-7. Keep the chosen training fit without refitting on validation. Evaluate test cells only after
-   selecting regularization. Report raw-score AUROC/AP and threshold-zero classification metrics.
+6. Fit group lasso once per cell line to joint RNA + ATAC, using Vehicle = -1, E2 = +1.
+   Fix alpha ratio at **0.1**, motivated by the best recorded setting in the interrupted MCF7 ATAC
+   search. This is a starting setting, not a demonstrated optimum for either integrated model.
+7. Report validation performance diagnostically; do not search or refit on validation.
+   Require convergence before test evaluation. Report raw-score AUROC/AP and threshold-zero metrics.
 
 The Gaussian kernel is k(x,z) = exp(-||x-z||² / (2σ²)). Each group's feature map is
 [cos(xW), sin(xW)] / sqrt(D), with W sampled from N(0, 1/σ²).
 
 The objective is squared error / (2n) + alpha × sum of coefficient-block L2 norms.
-Alpha is a fraction of the training-only group-lasso alpha maximum.
+Alpha is fixed at 0.1 times the training-only group-lasso alpha maximum.
 **There is no MLP learning rate or neural-network epoch training in this notebook.**
 Uncalibrated regression scores are saved as decision scores, not probabilities; therefore
 log loss/Brier scores are not compared with nb08.
@@ -81,7 +82,7 @@ The [paper](https://doi.org/10.1038/s42003-025-08533-7) provides the scientific 
 This notebook implements that core approach independently, with explicit adaptations:
 nb08's existing feature set/preprocessing; fixed 32-frequency Gaussian approximation; positive-distance
 median bandwidths; training-centered, unit-average-energy blocks; a group-norm alpha maximum;
-validation selection rather than repeated nested cross-validation; and JASPAR2024 motif annotation.
+a fixed alpha rather than repeated nested cross-validation; and JASPAR2024 motif annotation.
 It does not claim numerical equivalence with scMKL or reproduce its published scores.
 
 Peak coordinate origin remains unresolved. A motif is admitted only when present under **both**
@@ -96,7 +97,7 @@ The comparison is exploratory: biological replicate IDs are unavailable and libr
 track treatment. nb08 test results have already been inspected. If the learning rate was chosen using
 test performance, those cells are no longer an untouched final evaluation set; preserve this comparison
 for continuity, but reserve independent data for a confirmatory performance claim.
-The grouped-kernel controls help separate integration benefit from a change in model family.
+Comparisons with nb08 change both model family and input modalities; they do not isolate integration alone.
 """),
 code("""# Install missing runtime packages. No notebook model is fitted in this cell.
 import importlib.util
@@ -129,7 +130,12 @@ else:
               str(here.parent if here.name=="notebooks" else here)))
 
 NB08_RUN_ID="20261011T103750_408739Z"
-RUN_ID=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
+# Leave blank for the first run of this revised notebook.
+# After a disconnect, set this to the NEW integrated run ID printed below.
+RESUME_RUN_ID=""
+# Reuse completed kernels from the interrupted run; keep that folder on Drive.
+CACHED_KERNEL_RUN_ID="20261012T085524_321769Z"
+RUN_ID=RESUME_RUN_ID or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
 print("Project:",BASE)
 print("nb08 comparison run:",NB08_RUN_ID)
 print("New nb09 run:",RUN_ID)
@@ -152,7 +158,7 @@ It will stop on mismatches rather than silently create a different comparison.
 """),
 code("""from IPython.display import display
 BASELINE, OUTPUT, ARTIFACTS, MANIFESTS, NB08_CONFIG = prepare_nb09(
-    BASE,NB08_RUN_ID,RUN_ID,CONFIG,HALLMARK,REFERENCES,SCAN_CONFIG)
+    BASE,NB08_RUN_ID,RUN_ID,CONFIG,HALLMARK,REFERENCES,SCAN_CONFIG,resume=bool(RESUME_RUN_ID))
 print("Results:",OUTPUT)
 print("Models and feature maps:",ARTIFACTS)
 print("Actual nb08 learning rate:",NB08_CONFIG["learning_rate"])
@@ -169,24 +175,25 @@ cells[11].source += "\n_ = (OUTPUT/'scmkl_style_source.py').write_text("+repr(so
 for line in config["cell_lines"]:
     cells.extend([
         md(f"""## {line}: build biological feature groups and kernels
-This step can take time: it annotates selected ATAC peaks and constructs one random-feature block per
-retained pathway/motif group. It uses no test labels to fit preprocessing or bandwidths.
+Completed kernels are reused after checking settings, reference versions and cell splits.
+Missing kernels are built by annotating selected peaks and constructing random-feature blocks. It uses no test labels to fit preprocessing or bandwidths.
 """),
         code(f'{line}_PATHS, {line}_TABLES = construct_line(\n'
              f'    BASE,BASELINE,OUTPUT,ARTIFACTS,MANIFESTS["{line}"],"{line}",\n'
-             f'    NB08_CONFIG,CONFIG,HALLMARK,REFERENCES,SCAN_CONFIG)\n'
+             f'    NB08_CONFIG,CONFIG,HALLMARK,REFERENCES,SCAN_CONFIG,cached_run_id=CACHED_KERNEL_RUN_ID)\n'
              f'display(pd.DataFrame([{{"modality":m,"kernels":len(t)}} for m,t in {line}_TABLES.items()]))'),
-        md(f"""## {line}: train RNA, ATAC and integrated models
-Selection uses validation only. Test evaluation follows selection for each input mode.
-Candidate convergence and selection metrics are saved; failed convergence is not silently accepted.
+        md(f"""## {line}: train one integrated RNA + ATAC model
+One fit, fixed alpha ratio 0.1. Validation is diagnostic; test evaluation requires convergence.
+The fit checkpoint is saved immediately after the solver returns, before evaluation and plotting.
+Completed models/checkpoints are reused when resuming the same new run; a fit interrupted before
+the solver returns must restart. No RNA-only or ATAC-only models are trained.
 """),
         code(f'display(fit_group_models({line}_PATHS,{line}_TABLES,MANIFESTS["{line}"],\n'
              f'                         "{line}",OUTPUT,ARTIFACTS,CONFIG))')
     ])
 cells.extend([
 md("""## Compare with nb08 and export
-The table contains five models per cell line: two nb08 MLP baselines, two grouped-kernel controls,
-and joint RNA + ATAC. Test IDs/labels must match exactly. Difference tables report joint-model
+The table contains three models per cell line: the two saved nb08 MLP baselines and joint RNA + ATAC. Test IDs/labels must match exactly. Difference tables report joint-model
 AUROC/AP minus each reference model; these are descriptive differences, not significance tests.
 
 **Send back the generated results ZIP.** It includes selected regularization, solver status,
@@ -194,7 +201,7 @@ group coverage/weights, predictions, plots, input/split checksums and settings.
 Large kernel arrays, random maps and coefficient checkpoints remain in data/processed/nb09/RUN_ID/.
 
 A higher integrated score is not guaranteed, especially given nb08's near-ceiling RNA AUROC.
-Use the controls and validation/test gap to interpret whether integration helps.
+Use the baseline comparison and validation/test gap descriptively; model family and inputs both change.
 """),
 code("""comparison, RESULTS_ZIP = export_comparison(BASE,BASELINE,OUTPUT,MANIFESTS,CONFIG)
 display(comparison[["cell_line","model","modality","AUROC","average_precision",
@@ -204,6 +211,8 @@ print("Results archive:",RESULTS_ZIP)
 md("""### Optional download
 The ZIP is already saved on Drive. Turn on the switch below to download it through Colab.
 A changed configuration requires a new run. Kernel arrays and models are not included in the ZIP.
+For a disconnect, reopen this notebook, set RESUME_RUN_ID to the NEW integrated run ID and run all.
+Keep the old cached-kernel run folder: the new model may reference its saved feature maps.
 """),
 code("""DOWNLOAD_RESULTS=False
 if DOWNLOAD_RESULTS and IN_COLAB:

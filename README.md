@@ -87,7 +87,7 @@ After editing canonical source, regenerate notebooks:
 | nb06 | RNA–ATAC pathway comparison in both enrichment directions |
 | nb07 | Matched-background motif enrichment, both ATAC directions and sensitivity |
 | nb08 | RNA-only and ATAC-only MLP baselines; user-run Colab training |
-| nb09 | scMKL-style RNA + ATAC integration and unimodal controls; user-run Colab |
+| nb09 | scMKL-style RNA + ATAC; one fixed-alpha model per cell line |
 | nb10 | Saved-model comparison and biological interpretation; user-run Colab |
 | nb11 (future) | MultiVI latent representation |
 | nb12 (future) | Model comparison |
@@ -143,7 +143,7 @@ Colab instructions, paper differences, outputs and the nb09 integration handoff.
 
 ## scMKL-style predictive integration
 Use [nb09](notebooks/nb09_scmkl_style_integration.ipynb) for grouped Gaussian kernels and group lasso.
-It reuses nb08 splits and compares RNA, ATAC and integration, alongside the saved MLP results.
+It reuses nb08 splits and trains one fixed-alpha integrated model per cell line, compared with saved MLP results.
 This is an adapted implementation, not an exact scMKL reproduction. It has not been executed.
 See [the integration modeling guide](SCMKL_STYLE_INTEGRATION.md) for Colab requirements and methods.
 

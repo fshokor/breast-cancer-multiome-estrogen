@@ -28,6 +28,7 @@ assert not any("model_comparison_source.py" in c.source for c in nb.cells if c.c
 assert 'NB09_RUN_ID=""' in nb.cells[3].source
 assert 'matching_acceptable' in source and 'priority_candidate' in source
 assert 'best_loss' not in source
+assert 'MODES=("RNA_ATAC",)' in source
 print("PASS: source/notebook Python syntax, notebook schema, embedded source and review steps.")
 print("PASS: no model-fitting/prediction calls or model-training library imports.")
 print("PASS: all notebook cells unexecuted with empty outputs.")

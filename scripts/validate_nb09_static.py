@@ -26,7 +26,12 @@ for i,c in enumerate(nb.cells):
 assert sum(c.cell_type=="code" and c.source==source for c in nb.cells)==1
 config=json.loads((root/"configs/scmkl_style.json").read_text())
 assert any(c.cell_type=="code" and c.source=="CONFIG = "+repr(config)+"\nCONFIG" for c in nb.cells)
-assert config["alpha_ratios"]==[1,.3,.1,.03,.01]
+assert config["alpha_ratios"]==[.1]
+fit_source=ast.get_source_segment(source,functions["fit_group_models"])
+assert 'for mode,modalities in (("RNA_ATAC",["RNA","ATAC"]),):' in fit_source
+assert sum(isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr=="fit"
+           for n in ast.walk(functions["fit_group_models"]))==1
+assert "fit_checkpoint.npz" in fit_source
 assert config["rff_frequencies"]==32
 assert any(c.cell_type=="code" and 'NB08_RUN_ID="20261011T103750_408739Z"' in c.source for c in nb.cells)
 setup=[c for c in nb.cells if c.cell_type=="code" and "BASELINE, OUTPUT, ARTIFACTS" in c.source]
@@ -49,6 +54,6 @@ assert 'score_rows(paths,modalities,test,best["coef"],best["intercept"])' in sou
 assert 'best_loss' not in source
 assert 'scmkl_style_source.py' not in ''.join(c.source for c in nb.cells if c.cell_type=="markdown")
 print("PASS: syntax, schema, configuration, embedded source and reused preprocessing consistency.")
-print("PASS: explicit nb08 run, both cell lines, controls/integration entry points.")
+print("PASS: explicit nb08 run, both cell lines, one integrated fit per line, cache/checkpoint entry points.")
 print("PASS: all notebook code cells unexecuted and output-free.")
 print("No scientific code, reference scan, feature construction or training was executed.")

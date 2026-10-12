@@ -28,7 +28,10 @@ from sklearn.metrics import (roc_auc_score, average_precision_score, accuracy_sc
     balanced_accuracy_score, f1_score, confusion_matrix, roc_curve, precision_recall_curve)
 
 def save_json(path, value):
-    Path(path).write_text(json.dumps(value,indent=2,allow_nan=False)+"\n")
+    path=Path(path)
+    temporary=path.with_name(path.name+".partial")
+    temporary.write_text(json.dumps(value,indent=2,allow_nan=False)+"\n")
+    temporary.replace(path)
 
 def sha256(path):
     h = hashlib.sha256()
@@ -153,7 +156,7 @@ def sequence_qc(root,da_tables,refs,config):
              "length_common_interval","gc_fraction","sequence_status"]),sequences
 
 
-def prepare_nb09(base, nb08_run_id, run_id, config, hallmark, refs, scan_config):
+def prepare_nb09(base, nb08_run_id, run_id, config, hallmark, refs, scan_config, resume=False):
     baseline=Path(base)/"results"/"tables"/"nb08"/nb08_run_id
     required=["config.json","input_provenance.csv","integration_handoff.json","metrics_summary.csv"]
     required += [f"{line}_{suffix}" for line in config["cell_lines"]
@@ -196,7 +199,18 @@ def prepare_nb09(base, nb08_run_id, run_id, config, hallmark, refs, scan_config)
     out=Path(base)/"results"/"tables"/"nb09"/run_id
     artifacts=Path(base)/"data"/"processed"/"nb09"/run_id
     if out.exists() or artifacts.exists():
-        raise FileExistsError("Choose a new RUN_ID.")
+        if not resume or not out.is_dir() or not artifacts.is_dir():
+            raise FileExistsError("Choose a new RUN_ID, or explicitly set RESUME_RUN_ID.")
+        for filename,value in (("config.json",config),("hallmark_reference.json",hallmark),
+                               ("motif_references.json",refs),("motif_scan_config.json",scan_config),
+                               ("nb08_config.json",baseline_config),("nb08_handoff.json",handoff)):
+            if json.loads((out/filename).read_text()) != value:
+                raise ValueError(f"Cannot resume: {filename} changed.")
+        for line in config["cell_lines"]:
+            if sha256(out/f"{line}_splits.csv") != handoff["manifests"][line]["sha256"]:
+                raise ValueError("Resume split mismatch.")
+        print("Resuming existing integrated-model run:",run_id)
+        return baseline,out,artifacts,manifests,baseline_config
     out.mkdir(parents=True)
     artifacts.mkdir(parents=True)
     save_json(out/"config.json",config)
@@ -212,7 +226,7 @@ def prepare_nb09(base, nb08_run_id, run_id, config, hallmark, refs, scan_config)
     save_json(out/"environment.json",{"python":sys.version,
         "packages":{name:importlib.metadata.version(name) for name in packages}})
     print("nb08 learning rate recorded:",baseline_config["learning_rate"])
-    print("nb09 uses a regularization grid, not a neural-network learning rate.")
+    print("nb09 fits one integrated model per line at fixed alpha ratio 0.1.")
     return baseline,out,artifacts,manifests,baseline_config
 
 def ensure_references(base,refs,out):
@@ -290,7 +304,7 @@ def rff_design(x,center,scale,groups,manifest,line,modality,config,artifacts,out
     path=artifacts/f"{line}_{modality}_rff.npy"
     z=np.lib.format.open_memmap(path,mode="w+",dtype=np.float32,shape=(x.shape[0],len(groups)*2*d))
     directory=artifacts/f"{line}_{modality}_maps"
-    directory.mkdir()
+    directory.mkdir(exist_ok=True)
     report=[]
     for j,(name,ix) in enumerate(groups.items()):
         seed=int.from_bytes(hashlib.sha256(f"{config['seed']}|{line}|{name}".encode()).digest()[:4],"little")
@@ -328,13 +342,18 @@ def rff_design(x,center,scale,groups,manifest,line,modality,config,artifacts,out
     del z
     return path,table
 
-def construct_line(base,baseline,out,artifacts,manifest,line,baseline_config,config,hallmark,refs,scan_config):
+def construct_line(base,baseline,out,artifacts,manifest,line,baseline_config,config,hallmark,refs,scan_config,
+                   cached_run_id=""):
     if config != json.loads((out/"config.json").read_text()):
         raise ValueError("Configuration changed after setup. Start a new run.")
     if baseline_config != json.loads((baseline/"config.json").read_text()):
         raise ValueError("nb08 configuration changed after setup.")
     paths,tables={},{}
     for modality in ("RNA","ATAC"):
+        reused=reuse_kernel(base,out,artifacts,manifest,line,modality,config,cached_run_id)
+        if reused is not None:
+            paths[modality],tables[modality]=reused
+            continue
         x,center,scale,features=load_features(base,line,modality,manifest,baseline_config)
         expected=pd.read_csv(baseline/f"{line}_{modality}_features.csv",dtype={"feature_id":str})
         if features["feature_id"].tolist()!=expected["feature_id"].tolist():
@@ -388,7 +407,7 @@ def plot_model(y,score,search,weights,path,title):
     axes[0].legend()
     good=search[search.converged]
     axes[1].semilogx(good["alpha_ratio"],good["validation_AUROC"],"o-")
-    axes[1].set(xlabel="Regularization / alpha max",ylabel="Validation AUROC",title="Selection uses validation")
+    axes[1].set(xlabel="Regularization / alpha max",ylabel="Validation AUROC",title="Fixed alpha; validation diagnostic")
     top=weights.sort_values("coefficient_group_norm").tail(12)
     axes[2].barh(top["group"].str.replace("HALLMARK_","",regex=False),top["coefficient_group_norm"])
     axes[2].set(xlabel="Coefficient group norm",title="Predictive groups (not activity)")
@@ -401,15 +420,19 @@ def plot_model(y,score,search,weights,path,title):
 def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
     if config != json.loads((out/"config.json").read_text()):
         raise ValueError("Configuration changed after setup. Start a new run.")
+    if config["alpha_ratios"] != [0.1]:
+        raise ValueError("This notebook is configured for one fixed-alpha integrated fit per line.")
     y=manifest["label_E2"].to_numpy(dtype=int)
     train,val,test=[np.flatnonzero(manifest["split"].to_numpy()==part)
                     for part in ("train","validation","test")]
     block=2*config["rff_frequencies"]
     results=[]
-    for mode,modalities in (("RNA",["RNA"]),("ATAC",["ATAC"]),("RNA_ATAC",["RNA","ATAC"])):
+    for mode,modalities in (("RNA_ATAC",["RNA","ATAC"]),):
         tag=f"{line}_{mode}"
         if (out/f"{tag}_metrics.json").exists():
-            raise FileExistsError(f"{tag} completed already; choose a new RUN_ID.")
+            print(f"{tag}: completed model already saved; skipping fit.")
+            results.append(json.loads((out/f"{tag}_metrics.json").read_text()))
+            continue
         xtrain=design_rows(paths,modalities,train)
         target=(2*y[train]-1).astype(np.float32)
         correlation=xtrain.T@(target-target.mean())/len(train)
@@ -420,15 +443,38 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
         records=[]
         started=time.monotonic()
         for ratio in config["alpha_ratios"]:
-            model=GroupLasso(groups=block,alpha=alpha_max*ratio,weights=None,
-                fit_intercept=True,tol=config["solver_tolerance"],
-                max_iter=config["solver_max_iter"],max_epochs=config["solver_max_epochs"])
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                model.fit(xtrain,target)
-            converged=not any(issubclass(w.category,ConvergenceWarning) for w in caught)
-            coefficients=np.asarray(model.coef_).copy()
-            intercept=float(model.intercept_)
+            checkpoint=artifacts/f"{tag}_fit_checkpoint.npz"
+            checkpoint_meta=artifacts/f"{tag}_fit_checkpoint.json"
+            if checkpoint.exists() and checkpoint_meta.exists():
+                saved=json.loads(checkpoint_meta.read_text())
+                if (saved["config_sha256"] != sha256(out/"config.json") or
+                    saved["split_sha256"] != sha256(out/f"{line}_splits.csv") or
+                    not np.isclose(saved["alpha"],alpha_max*ratio)):
+                    raise ValueError("Checkpoint configuration/split/alpha mismatch.")
+                with np.load(checkpoint,allow_pickle=False) as ck:
+                    coefficients=ck["coef"].copy()
+                    intercept=float(ck["intercept"])
+                converged=bool(saved["converged"])
+                warning_text=saved["solver_warnings"]
+                print(f"{tag}: reusing saved fit checkpoint; no retraining.")
+            else:
+                model=GroupLasso(groups=block,alpha=alpha_max*ratio,weights=None,
+                    fit_intercept=True,tol=config["solver_tolerance"],
+                    max_iter=config["solver_max_iter"],max_epochs=config["solver_max_epochs"])
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter("always")
+                    model.fit(xtrain,target)
+                converged=not any(issubclass(w.category,ConvergenceWarning) for w in caught)
+                coefficients=np.asarray(model.coef_).copy()
+                intercept=float(model.intercept_)
+                warning_text=" | ".join(str(w.message) for w in caught)
+                temp=checkpoint.with_name(checkpoint.stem+".partial.npz")
+                np.savez_compressed(temp,coef=coefficients,intercept=np.array(intercept))
+                temp.replace(checkpoint)
+                save_json(checkpoint_meta,{"converged":converged,"solver_warnings":warning_text,
+                    "alpha":alpha_max*ratio,"config_sha256":sha256(out/"config.json"),
+                    "split_sha256":sha256(out/f"{line}_splits.csv")})
+                del model
             if not np.isfinite(coefficients).all() or not np.isfinite(intercept):
                 raise FloatingPointError("Invalid group-lasso coefficients.")
             pv=score_rows(paths,modalities,val,coefficients,intercept)
@@ -437,7 +483,7 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
             record={"alpha_ratio":ratio,"alpha":alpha_max*ratio,"alpha_max":alpha_max,
                 "validation_AUROC":vm["AUROC"],"validation_average_precision":vm["average_precision"],
                 "selected_groups":selected,"converged":converged,
-                "solver_warnings":" | ".join(str(w.message) for w in caught)}
+                "solver_warnings":warning_text}
             records.append(record)
             pd.DataFrame(records).to_csv(out/f"{tag}_validation_search.csv",index=False)
             print(f"{tag}: alpha ratio={ratio:g}, val AUROC={vm['AUROC']:.5f}, "
@@ -447,7 +493,6 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
             if converged and (best is None or key>best["key"]):
                 best={"key":key,"coef":coefficients,"intercept":intercept,
                       "record":record,"validation_score":pv}
-            del model
         if best is None:
             raise RuntimeError("No converged model. Inspect solver_warnings before changing settings.")
         # Test predictions only after all candidates have been selected using validation.
@@ -463,7 +508,7 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
             "modalities":modalities,"group_order":kernel_table["group"].tolist(),
             "rff_frequencies":config["rff_frequencies"],"target_encoding":{"E2":1,"Vehicle":-1},
             "classification_threshold":0,"selection":best["record"],
-            "maps":[f"{line}_{m}_maps" for m in modalities],
+            "maps":[str(Path(paths[m]).parent/f"{line}_{m}_maps") for m in modalities],
             "score_interpretation":"Uncalibrated regression decision score; not a probability."})
         for part,ix,pred in (("validation",val,best["validation_score"]),("test",test,pt)):
             frame=manifest.iloc[ix].copy()
@@ -486,7 +531,7 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
 def export_comparison(base,baseline,out,manifests,config):
     rows=[]
     for line in config["cell_lines"]:
-        for mode in ("RNA","ATAC","RNA_ATAC"):
+        for mode in ("RNA_ATAC",):
             rows.append(json.loads((out/f"{line}_{mode}_metrics.json").read_text()))
         expected=manifests[line].loc[manifests[line]["split"]=="test",["cell_id","label_E2"]].reset_index(drop=True)
         for mode in ("RNA","ATAC"):
@@ -496,7 +541,7 @@ def export_comparison(base,baseline,out,manifests,config):
             shutil.copy2(baseline/f"{line}_{mode}_test_predictions.csv",out/f"nb08_{line}_{mode}_predictions.csv")
             rows.append({"cell_line":line,"model":"MLP_nb08","modality":mode,
                 **score_metrics(pred["label_E2"].to_numpy(),pred["probability_E2"].to_numpy(),.5)})
-        for mode in ("RNA","ATAC","RNA_ATAC"):
+        for mode in ("RNA_ATAC",):
             pred=pd.read_csv(out/f"{line}_{mode}_test_predictions.csv",dtype={"cell_id":str})
             if not pred[["cell_id","label_E2"]].equals(expected):
                 raise ValueError("nb09 test order/labels mismatch.")
@@ -528,3 +573,57 @@ def export_comparison(base,baseline,out,manifests,config):
     archive=shutil.make_archive(str(exports/f"nb09_{out.name}"),"zip",root_dir=out)
     print("Share:",archive)
     return summary,Path(archive)
+
+def reuse_kernel(base,out,artifacts,manifest,line,modality,config,cached_run_id):
+    """Reuse complete kernels only when preprocessing, references and splits match."""
+    pointer=out/f"{line}_{modality}_cache.json"
+    candidates=[(out,artifacts)]
+    if pointer.exists():
+        origin=json.loads(pointer.read_text())["source_run"]
+        if origin != out.name:
+            candidates=[(Path(base)/"results"/"tables"/"nb09"/origin,
+                         Path(base)/"data"/"processed"/"nb09"/origin)]
+            if not (candidates[0][0]/f"{line}_{modality}_kernels.csv").exists():
+                raise FileNotFoundError("Previously reused kernel source is missing; preserve the old run.")
+    if cached_run_id and cached_run_id != out.name:
+        candidates.append((Path(base)/"results"/"tables"/"nb09"/cached_run_id,
+                           Path(base)/"data"/"processed"/"nb09"/cached_run_id))
+    for old_out,old_artifacts in candidates:
+        path=old_artifacts/f"{line}_{modality}_rff.npy"
+        table_path=old_out/f"{line}_{modality}_kernels.csv"
+        if not table_path.exists():
+            continue
+        if not path.exists():
+            raise FileNotFoundError(f"Kernel completion table exists but array is missing: {path}")
+        old_config=json.loads((old_out/"config.json").read_text())
+        if {k:v for k,v in old_config.items() if k!="alpha_ratios"} != {k:v for k,v in config.items() if k!="alpha_ratios"}:
+            raise ValueError("Cached kernel construction settings differ.")
+        for name in ("hallmark_reference.json","motif_references.json","motif_scan_config.json",
+                     "nb08_config.json","nb08_handoff.json"):
+            if json.loads((old_out/name).read_text()) != json.loads((out/name).read_text()):
+                raise ValueError(f"Cached reference/baseline mismatch: {name}")
+        if sha256(old_out/f"{line}_splits.csv") != sha256(out/f"{line}_splits.csv"):
+            raise ValueError("Cached cell split mismatch.")
+        table=pd.read_csv(table_path)
+        array=np.load(path,mmap_mode="r")
+        if array.shape != (len(manifest),len(table)*2*config["rff_frequencies"]):
+            raise ValueError("Incomplete or mismatched kernel array.")
+        for start in range(0,len(manifest),256):
+            if not np.isfinite(array[start:start+256]).all():
+                raise ValueError("Nonfinite cached kernels.")
+        maps=old_artifacts/f"{line}_{modality}_maps"
+        if any(not (maps/name).is_file() for name in table.map_file):
+            raise FileNotFoundError("Cached random-feature maps are incomplete.")
+        if old_out != out:
+            suffixes=["kernels.csv","features.csv","group_coverage.csv","group_membership.json"]
+            if modality=="ATAC":suffixes+=["sequence_qc.csv"]
+            for suffix in suffixes:
+                original=old_out/f"{line}_{modality}_{suffix}"
+                if original.exists():shutil.copy2(original,out/original.name)
+            audit=old_out/f"{line}_motif_coordinate_audit.csv"
+            if modality=="ATAC" and audit.exists():shutil.copy2(audit,out/audit.name)
+        save_json(out/f"{line}_{modality}_cache.json",{"source_run":old_out.name,
+                  "array":str(path),"maps":str(maps),"array_bytes":path.stat().st_size})
+        print(f"{line} {modality}: reusing completed kernels from {old_out.name}.")
+        return path,table
+    return None
