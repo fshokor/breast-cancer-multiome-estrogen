@@ -29,12 +29,23 @@ assert 'from tqdm.auto import tqdm' in source
 assert 'best_state={k:v.detach().cpu().clone()' in source
 config=json.loads((ROOT/"configs/pathway_mlp.json").read_text())
 assert config["cell_lines"]==["MCF7","T47D"]
-assert config["max_epochs"]>=config["min_epochs"]>=config["gate_ramp_end_epoch"]
+assert config["max_epochs"]>=config["min_epochs"]>=1
 assert len(json.loads((ROOT/"configs/hallmark_v7.json").read_text())["gene_sets"])==50
 calls=[ast.parse(c.source) for c in code if not c.source.startswith("# Installation")]
 for function in ("prepare_line","train_model","evaluate_model","pathway_ablation","gene_attribution"):
     count=sum(isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id==function
               for t in calls for n in ast.walk(t) if t.body)
-    assert count==2,(function,count)
+    assert count==(2 if function=="prepare_line" else 6),(function,count)
 print(f"PASS: notebook schema, {len(code)} unexecuted code cells, Python syntax, source synchronization and static safeguards.")
 print("No project code, preprocessing, training, predictions or notebook cells executed.")
+
+assert 'gate_ramp_end_epoch' not in source
+assert 'strength=float(config["gate_lambda"])' in source
+assert 'self.norm=nn.Tanh()' in source and 'LayerNorm' not in source
+assert 'self.rna is not None else zero' in source
+assert 'self.atac is not None else zero' in source
+assert 'if not passed:' in source and 'gene rankings and region candidates withheld' in source
+assert 'leggauss(steps)' in source and 'complete and stable' in source
+assert 'folder=data["folder"]/"models"/mode' in source
+assert config["model_modes"]==["RNA","ATAC","RNA_ATAC"]
+print("PASS: six independent model calls, mode-specific checkpoints, early checkpoint eligibility and attribution fail-closed checks.")

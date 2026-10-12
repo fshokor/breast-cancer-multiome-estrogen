@@ -1,91 +1,83 @@
-# Pathway-structured multimodal MLP (nb11)
+# nb11 v2: matched sparse pathway models
 
-Notebook: [nb11](notebooks/nb11_pathway_multimodal_mlp.ipynb). Prepared without execution.
-Source: src/pathway_mlp.py. Settings: configs/pathway_mlp.json.
-Regenerate using scripts/build_nb11.py; statically validate using scripts/validate_nb11_static.py.
+[Notebook](notebooks/nb11_pathway_multimodal_mlp.ipynb).
+The revised notebook is intentionally unexecuted. The completed v1 notebook is preserved in
+notebooks/archive/nb11_completed_before_matched_models_12e4459137fd.ipynb.
 
-## Running and resuming
+## Models and comparisons
+Six fits total: RNA-only, ATAC-only and RNA+ATAC separately for MCF7 and T47D.
+They use nb08's exact paired-cell splits and the same training-only preprocessing and common
+Hallmark pathway universe. Each active modality has the same masked gene-to-pathway encoder.
+All models share the fusion output size, sparse pathway gates and classifier recipe.
+The absent modality has no encoder; its fusion block receives constant zeros, never its data.
+Parameter counts differ and are exported. A runtime input-isolation assertion checks unimodal predictions.
 
-Use a Colab GPU and the same Google Drive project folder as nb08.
-Supply all four nb02 processed H5AD files, the complete nb08 results directory and frozen
-Hallmark/reference specifications embedded in the notebook. RefSeq and blacklist files are
-downloaded if missing and accepted only when their hashes match the original frozen resources.
-If a remote reference changed, copy the original reference file from earlier notebooks.
+Compare structured RNA with nb08 RNA, structured ATAC with nb08 ATAC, and structured RNA+ATAC
+with both new matched controls. nb08 is not retrained. Its different input preprocessing and
+capacity mean performance differences do not isolate the effect of biological structure.
 
-Check BASE and NB08_RUN_ID. The default is 20261011T103750_408739Z.
-The printed nb11 RUN_ID identifies both results/tables/nb11/RUN_ID and
-data/processed/nb11/RUN_ID. Put that value in RESUME_RUN_ID to continue after a disconnect,
-then run from setup. Settings/source/reference/split signatures must match.
+## Fixes after the first run
+- Every epoch can become the best validation-BCE checkpoint, starting at epoch 1.
+- Constant expected-L0 penalty 0.005 applies from the start, replacing the delayed 0.001 penalty.
+- Gates start at 0.25 with Gaussian noise sigma 0.25.
+- Smooth bounded tanh replaces repeated layer normalization, avoiding its large derivative at
+  a zero reference. Pathway width remains 4; head width is 16, dropout 0.3, weight decay 0.02.
+- AdamW model LR 0.0003, gate LR 0.003, batch 128; maximum 100 epochs, minimum 10 and patience 10.
+- These are new starting settings, not demonstrated optimal settings. Stronger penalties can
+  underfit or still fail to yield sparsity. Report exact-zero/nonzero gates and expected-open
+  count separately, and inspect validation curves.
+- Adaptive Gauss-Legendre conditional IG uses 32, 64, 128, then at most 256 points. Every sampled
+  cell must pass completeness (absolute 0.01 + relative 0.05 times target logit change) and
+  attribution-vector stability (absolute 0.01 + relative L1 0.10) across consecutive resolutions.
+  If either fails, that pathway's gene rankings and candidate regions are withheld.
+  Diagnostics are displayed and exported. Numerical checks do not establish causal validity.
 
-Completed preprocessing caches are reused. Interrupted preprocessing restarts that cell line.
-Atomic last.pt saves model, optimizer, best model, history and RNG state after every completed
-epoch. An interrupted epoch restarts from that checkpoint. No checkpoint exists before the first
-epoch completes. Keep both results and artifacts folders on persistent Drive.
-Changing devices/software can affect exact reproducibility even with restored random states.
+## Colab and resuming
+Use a GPU and the same Drive project folder. Supply the four nb02 H5AD files and complete nb08
+results folder, including manifests, input hashes and test predictions. Frozen Hallmark membership
+is embedded. Reference files are hash-checked; if a rolling download changed, supply the original
+RefSeq/blacklist files from earlier notebooks.
 
-## Model
+Check BASE and NB08_RUN_ID. Start a NEW v2 run; v1 checkpoints are incompatible.
+Set RESUME_RUN_ID only to an existing v2 run ID with identical settings/source/reference signature.
+Results: results/tables/nb11/RUN_ID/CELL_LINE_MODE/.
+Checkpoints: data/processed/nb11/RUN_ID/CELL_LINE/models/MODE/last.pt and best.pt.
+Each model saves an atomic completed-epoch checkpoint including optimizer/RNG/history/best state.
+An interrupted epoch restarts from the preceding completed epoch. Completed training is skipped
+on resume, while evaluation/interpretation can regenerate. No checkpoint exists before epoch 1
+finishes. Prepared matrices are shared across modes and cached per cell line in the new run.
+Interrupted preprocessing restarts that cell line. No old-run preprocessing is silently reused.
 
-Two independent models: MCF7 and T47D. Within each, paired RNA and ATAC cells use exactly nb08's
-train/validation/test manifests. Raw input hashes and saved baseline predictions are verified.
+tqdm reports epochs, batches, validation AUROC, best epoch, patience and elapsed time. ETA is to
+the maximum epoch count, before early stopping. Completed-model statistics print the selected epoch.
 
-Frozen Hallmark membership defines masked gene-to-pathway connectivity. Each modality encodes
-four values per supported pathway. Pathway-specific fusion maps the eight RNA/ATAC values to
-four fused values. A clipped noisy gate per pathway encourages sparsity via expected-L0
-regularization. Evaluation uses deterministic gates. A 32-unit ReLU/dropout head predicts E2.
+## Features and explanation outputs
+RNA is log1p raw counts. ATAC uses binary peak accessibility with coordinate-consensus RefSeq
+transcript-union promoter/body links, blacklist exclusion and fractional multi-gene assignments.
+Custom ATAC gene activity is weighted accessible fraction, multiplied by median training depth /
+cell depth, then log1p. This is not measured expression or an exact ArchR gene score.
+Train-only detection/variance filtering and standardization are shared across modes.
+Pathways need at least three supported genes per modality; coverage is shared for matched comparison.
+No GSEA/DEG/nb06 significance results select predictive features.
 
-Masks are multiplied into weights on every forward pass. Layer normalization has no affine
-parameters; the masked/fusion layers have no bias. Dense PyTorch matrix operations implement
-the masks; this is biologically sparse connectivity, not a specialized sparse tensor backend.
-Gates are not identifiable biological importance estimates; downstream weights can compensate
-for gate magnitude. Validate dependence with ablations and attribution.
+Validation ablations remove pathways, active modality branches within pathways, or entire active
+branches. These perturbations are not separately trained unimodal baselines. Gene IG uses up to
+16 validation cells per class and three pathways with positive validation ablation effects.
+Other pathway latents stay fixed, with the training-mean input as reference.
+Linked ATAC regions are candidates, never region-level attribution scores.
 
-One fixed configuration per line, no search. AdamW model LR 0.0003, gate LR 0.003, batch 128,
-max 100 epochs, min 20, patience 10. Expected-L0 penalty 0.001 ramps over epochs 5–15.
-Validation BCE chooses checkpoints from epoch 15 onward. Test results never select checkpoints.
-tqdm displays epoch and batch progress, AUROC, patience, best epoch and elapsed time.
-ETA assumes the maximum epoch count; early stopping may finish sooner.
-These are project defaults, not the paper's best parameters.
+Final exports compare performance, selected-checkpoint sparsity, IG checks and validation pathway
+ablation across all three modes. The ZIP excludes model checkpoints and prepared matrices.
 
-## Features and interpretation
+## Interpretation limits
+This architecture gives explicit biological organization and testable pathway dependence.
+It does not automatically prove better explanation fidelity than nb08: nb08 has no equivalent
+attribution/stability audit here. Numerical IG convergence does not establish biological truth.
+A single seed cannot establish stable selection. A pathway gate is not activation/repression,
+and raw gate magnitudes are not importance scores. Compare both positive/negative GSEA directions
+and nb06 concordant/discordant evidence descriptively; they use the same cohort.
+Existing full-cohort QC, previously inspected test results, unavailable replicate IDs and possible
+library/treatment confounding limit generalization claims. Do not tune using test performance.
 
-RNA is log1p raw counts. ATAC is binary peak accessibility linked by fixed transcript-union
-promoter (2 kb upstream/500 bp downstream of TSS) plus gene-body overlap. This overrides the
-nearest-TSS analysis policy in nb06 while reusing its frozen reference annotation. Only links
-present under both coordinate conventions are retained; blacklist and nonstandard intervals
-are excluded. Multi-gene peaks receive fractional weights.
-
-ATAC score before log1p:
-sum(binary accessibility × fractional assignment) / sum(assignment weights)
-× median training-cell accessible-peak count / cell accessible-peak count.
-This custom coverage/depth-adjusted accessibility proxy is not measured expression or an exact
-ArchR score. Distal enhancer links are not modeled. Peak and assignment tables are retained.
-
-Training-only detection/variance filtering and standardization are applied in both modalities.
-All 50 Hallmark sets are attempted; only pathways with >=3 eligible genes per modality survive.
-No nb06 significance, DEG, GSEA or motif ranking selects predictive features.
-The new feature pipeline differs from nb08, so comparisons do not isolate architecture effects.
-
-Validation ablations remove each fused pathway, each pathway's RNA/ATAC branch, and each entire
-modality branch. Positive AUROC drop means dependence of this fitted model, not causality.
-Conditional integrated gradients target up to three pathways with positive validation ablation
-effects, using <=16 validation cells per class and 32 integration intervals. Other pathway
-latents stay fixed. Zero standardized input represents the training mean. Completeness errors
-are exported and must be checked before interpreting gene rankings.
-Candidate regions linked to attributed ATAC genes are annotations, not peak-level attribution.
-
-Results include coverage, features, peak links, gates, epoch history, validation/test predictions,
-baseline comparison, ablations, gene attribution, completeness errors and figures. The results ZIP
-excludes checkpoints and prepared matrices, which stay in the artifact folder.
-
-## Limits
-
-No model or notebook cells were executed while authoring. Static syntax/schema checks cannot
-establish runtime performance, memory use, convergence or biological validity.
-Full-cohort QC is inherited; cell-level splits do not establish replicate/patient generalization.
-Library/treatment confounding, prior test inspection, overlapping pathways, provisional peak
-mapping and off-distribution ablations limit claims. Validation interpretation is exploratory.
-Compare with both positive and negative nb06/GSEA findings as descriptive context, not independent
-validation. Gate magnitudes do not indicate pathway activation or repression.
-
-References: [P-NET](https://www.nature.com/articles/s41586-021-03922-4);
-[stochastic gates](https://proceedings.mlr.press/v119/yamada20a.html).
+Authoring checks parse syntax and validate notebook structure without executing notebook cells,
+preprocessing, model fitting, prediction or attribution. Runtime convergence/performance remain unverified.

@@ -11,9 +11,9 @@ references=json.loads((ROOT/"configs/motif_references.json").read_text())
 blacklist=references["resources"]["hg38-blacklist.v2.bed.gz"]
 md,code=nbf.v4.new_markdown_cell,nbf.v4.new_code_cell
 cells=[
-md("""# nb11 — Biologically structured sparse multimodal MLP
+md("""# nb11 v2 — Matched sparse pathway models: RNA, ATAC and RNA+ATAC
 
-**PyTorch · RNA + ATAC · MCF7 and T47D trained separately · intentionally unexecuted**
+**PyTorch · three input modes per cell line · six fits total · intentionally unexecuted**
 
 This notebook implements the proposed pathway model. It does not use scMKL kernel matrices.
 It reuses the frozen Hallmark gene sets, raw paired data and **exact nb08 train/validation/test cells**.
@@ -22,7 +22,7 @@ RNA genes → masked RNA pathway nodes ↘
 　　　　　　　　　　　　　　　　　pathway-specific fusion → sparse pathway gates → small MLP → P(E2)  
 ATAC gene accessibility → masked ATAC pathway nodes ↗
 
-Each supported Hallmark pathway has four latent nodes per modality. A gene connects only to
+Each supported Hallmark pathway has four latent nodes per active modality. RNA-only and ATAC-only\nuse the same encoder, fusion output size, sparse gates and classifier as RNA+ATAC. The missing\nbranch is fixed to zero and has no encoder or access to its input values. Total allocated parameter counts\ntherefore differ; we match the architecture recipe rather than force equal parameter counts.\nThe common pathway universe and feature preprocessing are shared for this controlled comparison.\n\nEach supported Hallmark pathway has four latent nodes per modality. A gene connects only to
 pathways containing it. Each pathway fuses its own RNA and ATAC representations; the classifier
 combines the gated pathway representations. Gates use clipped Gaussian noise during training,
 deterministic values during evaluation, and an expected-L0 penalty.
@@ -37,7 +37,7 @@ Defaults are starting settings, not parameters shown to be optimal in the paper.
 3. Check BASE and NB08_RUN_ID below. The default nb08 ID is the earlier run discussed in this project.
 4. Run the cells in order. The notebook contains its implementation and reference specifications;
    no repository checkout is required in Colab.
-5. To resume, put the printed nb11 run ID in RESUME_RUN_ID and rerun from setup.
+5. **Start a NEW run for v2. Old v1 checkpoints are incompatible.** To resume a v2 run, put its printed nb11 run ID in RESUME_RUN_ID and rerun from setup.
    Keep configuration and implementation unchanged. Completed preprocessing is reused; an interrupted
    preprocessing step restarts for that cell line. Training resumes after the last completed epoch.
 
@@ -56,14 +56,14 @@ md("""## Inputs, leakage controls and interpretation
 - Detection/variance filtering, mean, standard deviation and depth reference use **training cells only**.
   The existing full-cohort QC is inherited. This preprocessing differs from nb08, so any gain is a
   pipeline comparison, not proof that architecture alone caused the gain.
-- Validation BCE selects the epoch only after the sparsity penalty reaches full strength.
+- Validation BCE selects the best epoch from epoch 1. Constant sparsity regularization applies\n  from the first epoch. No early validation optimum is excluded.
   Test cells never select epochs, pathways or attribution examples.
 - Ablations and gene attribution use validation cells. They measure dependence of this fitted model,
   not causality. Redundant pathways and off-distribution ablations can affect interpretation.
 - Positive/negative GSEA NES describes enrichment direction. A gate is unsigned predictive selection;
   neither a large gate nor ATAC accessibility proves a pathway is active. nb06 provides descriptive
   context, not independent validation.
-- Peak-to-gene links remain provisional. Exported candidate regions are **not peak-level attribution**.
+- Smooth bounded tanh layers replace the previous repeated layer normalization. Gene IG uses\n  adaptive Gauss-Legendre integration (32 to 256 points), completeness checks on every sampled cell\n  and stability between successive resolutions. Failed pathway attributions are withheld.\n- Peak-to-gene links remain provisional. Exported candidate regions are **not peak-level attribution**.
   Gene IG is conditional on one pathway while other pathway representations are held fixed.
 - Cell-level splits lack biological-replicate validation; library/treatment confounding can remain.
   The previously inspected test set cannot support an unbiased claim after test-guided tuning.
@@ -90,12 +90,15 @@ code("import json\nfrom datetime import datetime, timezone\n"
      'RUN_ID = RESUME_RUN_ID or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")\n'
      "CONFIG = "+repr(config)+"\n"
      "print('nb11 RUN_ID:', RUN_ID)\nprint(json.dumps(CONFIG, indent=2))"),
-md("""Default: up to 100 epochs, batch size 128, AdamW, model LR 0.0003 and gate LR 0.003.
-Early stopping requires at least 20 epochs and 10 non-improving eligible validation epochs.
-The gate penalty ramps from epoch 5 to 15. These learning rates differ from nb08 because this is a
-different architecture; do not change them based on test performance. tqdm shows epoch and batch
-progress, validation AUROC, best epoch, patience and elapsed minutes. Its ETA assumes all remaining
-epochs run; early stopping can finish earlier. Save/load happens once per completed epoch."""),
+md("""Defaults: up to 100 epochs, batch 128, model LR 0.0003, gate LR 0.003.
+All three modes use head width 16, dropout 0.3, weight decay 0.02 and gate penalty 0.005
+from epoch 1. Gates start at 0.25 with noise sigma 0.25. These are revised starting settings,
+not established optimal values. Stronger regularization may underfit; inspect validation curves.
+Every epoch is eligible for selection. Stop after at least 10 epochs and patience 10.
+Progress includes epoch/batch bars, elapsed time and early-stopping state. Each model has its own
+atomic checkpoint; completed models load their best weights on resume.
+An expected open count is not a count of exact zeros: the notebook reports both.
+Do not change settings based on test results.""" ),
 md("## 3. Embedded implementation and frozen references"),
 code(source),
 code("HALLMARK = "+repr(hallmark)+"\nANNOTATION = "+repr(annotation)+"\nBLACKLIST = "+repr(blacklist)+"\nSOURCE_SHA = "+repr(hashlib.sha256(source.encode()).hexdigest())),
@@ -109,40 +112,55 @@ display(pd.concat([m.groupby(["cell_line","split","treatment"]).size().rename("c
                    for m in MANIFESTS.values()],ignore_index=True))
 COMPARISONS = []
 """)]
+
 for line in ("MCF7","T47D"):
     cells += [
-        md(f"## {line}: prepare pathway features\nThis step builds the new gene-accessibility features; scMKL kernels are not used. A completed cache is reused on resume."),
+        md(f"## {line}: prepare shared pathway features\nAll modes share the same features, masks and train-only scaling. Coverage is restricted to pathways supported in both modalities. This is a matched control, not a separately optimized unimodal pipeline."),
         code(f'DATA = prepare_line(BASE, "{line}", MANIFESTS["{line}"], CONFIG, HALLMARK, ANNOTATION, BLACKLIST, OUTPUT, ARTIFACTS)\n'
              'print("RNA:", DATA["rna"].shape, "ATAC:", DATA["atac"].shape, "pathways:", len(DATA["structure"]["pathways"]))\n'
-             f'display(pd.read_csv(OUTPUT/"{line}_pathway_coverage.csv"))'),
-        md(f"## {line}: train with tqdm and epoch checkpoints"),
-        code(f'MODEL = train_model(DATA, "{line}", CONFIG, OUTPUT)'),
-        md(f"## {line}: evaluate the selected model\nFixed threshold 0.5. Test evaluation occurs after model selection; do not use it to tune settings."),
-        code(f'COMPARISON = evaluate_model(MODEL, DATA, "{line}", CONFIG, OUTPUT, BASELINE)\n'
-             f'COMPARISON.to_csv(OUTPUT/"{line}_comparison.csv", index=False)\nCOMPARISONS.append(COMPARISON)\ndisplay(COMPARISON)'),
-        md(f"## {line}: validate pathway and modality importance\nA positive AUROC drop means performance worsened after removing that representation. RNA/ATAC ablations remove branch latents before fusion; whole-pathway ablation removes its fused representation. No retraining."),
-        code(f'ABLATIONS = pathway_ablation(MODEL, DATA, "{line}", CONFIG, OUTPUT)\ndisplay(ABLATIONS.sort_values("AUROC_drop",ascending=False).head(20))'),
-        md(f"## {line}: conditional gene attribution\nAttribute the top three pathways with positive validation ablation effects, on up to 16 validation cells per class. Baseline is zero standardized input (training mean). The integrated-gradient completeness error is saved; inspect it before relying on fine gene rankings. Candidate linked ATAC regions are annotations, not region-importance scores."),
-        code(f'GENE_ATTRIBUTION = gene_attribution(MODEL, DATA, "{line}", CONFIG, OUTPUT, ABLATIONS)\n'
-             'if GENE_ATTRIBUTION is not None:\n    display(GENE_ATTRIBUTION.sort_values("mean_absolute_IG",ascending=False).head(30))'),
-        code('del MODEL, DATA\ngc.collect()\nif torch.cuda.is_available(): torch.cuda.empty_cache()')
-    ]
+             f'display(pd.read_csv(OUTPUT/"{line}_pathway_coverage.csv"))')]
+    for mode in ("RNA","ATAC","RNA_ATAC"):
+        cells += [
+            md(f"### {line} — {mode}: train and select by validation BCE\nOne fit, no hyperparameter sweep. Saves its own checkpoint after each completed epoch."),
+            code(f'MODEL = train_model(DATA, "{line}", CONFIG, OUTPUT, "{mode}")\n'
+                 f'SPARSITY = summarize_model(MODEL, DATA, "{line}", OUTPUT)'),
+            md("Evaluate the selected checkpoint. The baseline predictions are reused; nb08 is not retrained."),
+            code(f'COMPARISON = evaluate_model(MODEL, DATA, "{line}", CONFIG, OUTPUT, BASELINE)\n'
+                 f'COMPARISON.to_csv(OUTPUT/"{line}_{mode}"/"comparison.csv", index=False)\ndisplay(COMPARISON)'),
+            md("Validation ablations measure fitted-model dependence. Removing a whole modality is not equivalent to separately training a unimodal model."),
+            code(f'ABLATIONS = pathway_ablation(MODEL, DATA, "{line}", CONFIG, OUTPUT)\n'
+                 'display(ABLATIONS.sort_values("AUROC_drop",ascending=False).head(15))'),
+            md("Checked within-pathway gene attribution. Other pathway latents remain fixed; zero standardized inputs are the training-mean baseline. Rankings are exported only when every sampled cell passes completeness and resolution-stability checks. These checks establish numerical reliability, not biological causality."),
+            code(f'GENE_ATTRIBUTION = gene_attribution(MODEL, DATA, "{line}", CONFIG, OUTPUT, ABLATIONS)\n'
+                 'display(GENE_ATTRIBUTION.sort_values("mean_absolute_IG",ascending=False).head(20))'),
+            code('del MODEL\ngc.collect()\nif torch.cuda.is_available(): torch.cuda.empty_cache()')
+        ]
+    cells.append(code("del DATA\ngc.collect()"))
 cells += [
-md("## Export results for review\nThe ZIP includes results, mapping tables, settings and figures. Model weights and prepared matrices stay in the persistent artifact folder and are excluded from the ZIP."),
-code("""COMPARISON = pd.concat(COMPARISONS, ignore_index=True)
-COMPARISON.to_csv(OUTPUT/"model_comparison.csv", index=False)
+md("""## Compare prediction, sparsity and biological dependence
+Compare each structured unimodal model with its nb08 counterpart, then compare RNA+ATAC against
+both matched structured controls. The pathway-ablation tables compare the same named pathways
+across modes. Exact-zero/nonzero gates, ablation effects and numerically checked gene attribution
+describe interpretability of the fitted structured models. Gates alone do not validate explanations.
+
+nb08 provides predictive baselines, not equivalent attribution/stability measurements. Thus this
+notebook can show a more explicit biological organization and whether its pathways affect prediction;
+it cannot establish superior explanation fidelity over nb08 without a matched nb08 explanation audit.
+A single seed also cannot establish stable pathway selection. Differences from nb08 include feature
+preprocessing, regularization and capacity, not only pathway structure."""),
+code("""COMPARISON, SPARSITY = export_matched_review(OUTPUT)
 display(COMPARISON[COMPARISON["split"].eq("test")])
+display(SPARSITY)
 RESULTS_ZIP = Path(shutil.make_archive(str(OUTPUT.parent/(RUN_ID+"_results")), "zip", root_dir=OUTPUT))
 print("Results ZIP:", RESULTS_ZIP)
 print("Checkpoint folder:", ARTIFACTS)
-print("Send the results ZIP for review. No biological conclusion is assumed in advance.")
 """),
-md("""## What to review after execution
-Compare integration with both nb08 baselines on identical test cells; RNA-only was already strong.
-Inspect learning curves, pathway coverage, sparsity and validation ablation before gene rankings.
-Compare pathway names with both RNA GSEA directions and all relevant nb06 ATAC mapping scenarios,
-including unsupported or discordant evidence. Such agreement uses the same cohort and is exploratory.
-Stability across seeds/splits and biological replicate validation remain future work.
+md("""## Biological follow-up
+Compare estrogen-response and other selected pathways with both positive and negative GSEA NES
+and nb06 RNA/ATAC evidence, retaining discordant results. Such concordance is descriptive because
+the cohort is shared. ATAC-derived gene scores and candidate linked regions are provisional;
+region candidates are not peak-level attributions. No patient/replicate generalization is established.
+Do not tune on the test scores; earlier results were already inspected.
 """)]
 nb=nbf.v4.new_notebook(cells=cells,metadata={"kernelspec":{"display_name":"Python 3","language":"python","name":"python3"},
     "language_info":{"name":"python","version":"3.11"},"project":{"notebook":"nb11","intentionally_unexecuted":True}})

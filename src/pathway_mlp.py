@@ -53,8 +53,8 @@ def annotations(path):
 
 
 def start_run(base,nb08_run_id,run_id,config,hallmark,annotation,blacklist,source_sha,resume=False):
-    if config["max_epochs"]<config["gate_ramp_end_epoch"]:
-        raise ValueError("max_epochs must include the full gate-penalty ramp.")
+    if config["max_epochs"]<config["min_epochs"]:
+        raise ValueError("max_epochs must be >= min_epochs.")
     baseline=Path(base)/"results"/"tables"/"nb08"/nb08_run_id
     handoff=json.loads((baseline/"integration_handoff.json").read_text())
     if handoff["positive_class"]!="E2" or handoff["run_id"]!=nb08_run_id:
@@ -63,6 +63,8 @@ def start_run(base,nb08_run_id,run_id,config,hallmark,annotation,blacklist,sourc
         raise ValueError("Pathway width must be >=2 and attribution steps >=1.")
     if config["gate_sigma"]<=0 or config["batch_size"]<1:
         raise ValueError("Gate sigma and batch size must be positive.")
+    if config["ig_max_steps"]<2*config["integrated_gradients_steps"]:
+        raise ValueError("IG requires at least two integration resolutions for stability checks.")
     manifests={}
     provenance=pd.read_csv(baseline/"input_provenance.csv")
     for line in config["cell_lines"]:
@@ -279,15 +281,15 @@ class MaskedPathwayLayer(nn.Module):
             self.weight.mul_(torch.sqrt(2/expanded.sum(1,keepdim=True).clamp_min(1)))
             self.weight.mul_(expanded)
         self.p=p;self.width=width
-        self.norm=nn.LayerNorm(width,elementwise_affine=False)
+        self.norm=nn.Tanh()
     def forward(self,x):
         h=nn.functional.linear(x,self.weight*self.mask).reshape(-1,self.p,self.width)
-        return self.norm(nn.functional.gelu(h))
+        return self.norm(h)
 
 class StochasticPathwayGate(nn.Module):
-    def __init__(self,pathways,sigma):
+    def __init__(self,pathways,sigma,initial_mu):
         super().__init__()
-        self.mu=nn.Parameter(torch.zeros(pathways));self.sigma=sigma
+        self.mu=nn.Parameter(torch.full((pathways,),float(initial_mu)));self.sigma=sigma
     def values(self):
         noise=torch.randn_like(self.mu)*self.sigma if self.training else 0
         return (self.mu+.5+noise).clamp(0,1)
@@ -295,19 +297,24 @@ class StochasticPathwayGate(nn.Module):
         return .5*(1+torch.erf((self.mu+.5)/(self.sigma*math.sqrt(2))))
 
 class PathwayMLP(nn.Module):
-    def __init__(self,structure,config):
+    def __init__(self,structure,config,mode):
         super().__init__()
+        if mode not in ("RNA","ATAC","RNA_ATAC"):raise ValueError("Unknown input mode.")
+        self.mode=mode
         p=len(structure["pathways"]);d=config["pathway_width"]
-        self.rna=MaskedPathwayLayer(structure["rna_mask"],d)
-        self.atac=MaskedPathwayLayer(structure["atac_mask"],d)
+        self.pathways=p;self.width=d
+        self.rna=MaskedPathwayLayer(structure["rna_mask"],d) if mode!="ATAC" else None
+        self.atac=MaskedPathwayLayer(structure["atac_mask"],d) if mode!="RNA" else None
         self.fusion_weight=nn.Parameter(torch.empty(p,2*d,d))
         nn.init.normal_(self.fusion_weight,std=math.sqrt(1/d))
-        self.fusion_norm=nn.LayerNorm(d,elementwise_affine=False)
-        self.gates=StochasticPathwayGate(p,config["gate_sigma"])
+        self.fusion_norm=nn.Tanh()
+        self.gates=StochasticPathwayGate(p,config["gate_sigma"],config["gate_initial_mu"])
         self.head=nn.Sequential(nn.Linear(p*d,config["head_width"]),nn.ReLU(),
             nn.Dropout(config["dropout"]),nn.Linear(config["head_width"],1))
     def fused(self,r,a,ablate=None):
-        hr,ha=self.rna(r),self.atac(a)
+        zero=r.new_zeros((len(r),self.pathways,self.width))
+        hr=self.rna(r) if self.rna is not None else zero
+        ha=self.atac(a) if self.atac is not None else zero
         if ablate is not None:
             branch,index=ablate
             keep=torch.ones(hr.shape[1],device=hr.device)
@@ -316,7 +323,7 @@ class PathwayMLP(nn.Module):
             if branch=="RNA":hr=hr*keep[None,:,None]
             elif branch=="ATAC":ha=ha*keep[None,:,None]
         joined=torch.cat([hr,ha],dim=-1)
-        return self.fusion_norm(nn.functional.gelu(torch.einsum("bpi,pid->bpd",joined,self.fusion_weight)))
+        return self.fusion_norm(torch.einsum("bpi,pid->bpd",joined,self.fusion_weight))
     def classify(self,fused,ablate=None):
         z=fused*self.gates.values()[None,:,None]
         if ablate is not None and ablate[0]=="PATHWAY":
@@ -358,17 +365,19 @@ def scores(y,p):
         F1=float(f1_score(y,pred)),log_loss=float(log_loss(y,p,labels=[0,1])),
         Brier=float(brier_score_loss(y,p)),confusion_matrix=confusion_matrix(y,pred,labels=[0,1]).tolist())
 
-def train_model(data,line,config,out):
+def train_model(data,line,config,out,mode):
     """Resume only completed epochs; validation chooses epoch; test never enters training."""
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(config["seed"])
     if torch.cuda.is_available():torch.cuda.manual_seed_all(config["seed"])
     rng=np.random.default_rng(config["seed"])
-    model=PathwayMLP(data["structure"],config).to(device)
+    model=PathwayMLP(data["structure"],config,mode).to(device)
     optimizer=torch.optim.AdamW([
         {"params":[p for n,p in model.named_parameters() if n!="gates.mu"],"lr":config["learning_rate"],"weight_decay":config["weight_decay"]},
         {"params":[model.gates.mu],"lr":config["gate_learning_rate"],"weight_decay":0.}])
-    folder=data["folder"]; checkpoint=folder/"last.pt"
+    folder=data["folder"]/"models"/mode;folder.mkdir(parents=True,exist_ok=True)
+    out=out/f"{line}_{mode}";out.mkdir(parents=True,exist_ok=True)
+    checkpoint=folder/"last.pt"
     train=split_indices(data,"train"); val=split_indices(data,"val")
     history=[]; best=float("inf"); best_epoch=0; stale=0; best_state=None; done=False
     if checkpoint.exists():
@@ -382,14 +391,13 @@ def train_model(data,line,config,out):
             torch.cuda.set_rng_state_all([x.cpu() for x in ck["cuda_rng"]])
         print(f"{line}: resumed after epoch {len(history)}, device={device}")
     else:print(f"{line}: training on {device}; tqdm ETA is to the maximum epoch count, before early stopping.")
-    assert config["max_epochs"]>=config["min_epochs"]>=config["gate_ramp_end_epoch"]
+    assert config["max_epochs"]>=config["min_epochs"]>=1
     elapsed=sum(row["epoch_seconds"] for row in history)
-    bar=tqdm(range(len(history)+1,config["max_epochs"]+1),desc=f"{line} epochs",initial=len(history),total=config["max_epochs"],disable=done)
+    bar=tqdm(range(len(history)+1,config["max_epochs"]+1),desc=f"{line} {mode} epochs",initial=len(history),total=config["max_epochs"],disable=done)
     if not done:
         for epoch in bar:
             began=time.perf_counter();model.train();total_bce=0.
-            fraction=np.clip((epoch-config["gate_warmup_epochs"])/max(1,config["gate_ramp_end_epoch"]-config["gate_warmup_epochs"]),0,1)
-            strength=float(config["gate_lambda"]*fraction)
+            strength=float(config["gate_lambda"])
             order=rng.permutation(train)
             batches=tqdm(range(0,len(order),config["batch_size"]),desc=f"epoch {epoch} batches",leave=False)
             for start in batches:
@@ -404,15 +412,15 @@ def train_model(data,line,config,out):
             prob,val_bce,_=predict(model,data,val,config)
             if not math.isfinite(val_bce):raise RuntimeError("Non-finite validation loss.")
             auc=float(roc_auc_score(data["manifest"].iloc[val]["label_E2"],prob))
-            if epoch>=config["gate_ramp_end_epoch"]:
-                if val_bce<best-config["min_delta"]:
-                    best=val_bce;best_epoch=epoch;stale=0
-                    best_state={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}
-                else:stale+=1
+            if val_bce<best-config["min_delta"]:
+                best=val_bce;best_epoch=epoch;stale=0
+                best_state={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}
+            else:stale+=1
             duration=time.perf_counter()-began;elapsed+=duration
             row=dict(epoch=epoch,train_BCE=total_bce/len(train),val_BCE=val_bce,val_AUROC=auc,
                 gate_penalty=strength,expected_open=float(model.gates.expected_open().sum().detach()),
-                gates_above_half=int((model.gates.values()>.5).sum()),epoch_seconds=duration,
+                gates_above_half=int((model.gates.values()>.5).sum()),
+                gates_exactly_zero=int((model.gates.values()==0).sum()),epoch_seconds=duration,
                 cumulative_seconds=elapsed,best_epoch=best_epoch,patience_used=stale)
             history.append(row)
             done=(epoch>=config["min_epochs"] and stale>=config["patience"]) or epoch==config["max_epochs"]
@@ -427,16 +435,26 @@ def train_model(data,line,config,out):
     bar.close()
     if best_state is None:raise RuntimeError("No eligible validation checkpoint.")
     model.load_state_dict(best_state);model.eval()
+    # Verify the excluded modality cannot influence unimodal predictions.
+    if mode!="RNA_ATAC":
+        r,a,_=batch(data,val[:8],device)
+        with torch.no_grad():
+            original=model(r,a)
+            altered=model(r,torch.zeros_like(a)) if mode=="RNA" else model(torch.zeros_like(r),a)
+        if not torch.equal(original,altered):raise RuntimeError("Unimodal input isolation failed.")
+    print(f"{line} {mode}: selected epoch {best_epoch}, validation BCE={best:.6f}, completed epochs={len(history)}.")
     save_torch(folder/"best.pt",best_state)
-    save_json(out/f"{line}_training_complete.json",dict(best_epoch=best_epoch,best_validation_BCE=best,epochs=len(history),training_seconds=elapsed,device=str(device)))
+    save_json(out/f"{line}_training_complete.json",dict(mode=mode,best_epoch=best_epoch,best_validation_BCE=best,epochs=len(history),training_seconds=elapsed,device=str(device),parameters=sum(p.numel() for p in model.parameters())))
     fig,axes=plt.subplots(1,2,figsize=(11,3))
     frame=pd.DataFrame(history)
     frame.plot(x="epoch",y=["train_BCE","val_BCE"],ax=axes[0])
     frame.plot(x="epoch",y="expected_open",ax=axes[1])
+    axes[0].axvline(best_epoch,color="black",linestyle="--",label="selected epoch");axes[0].legend()
     fig.tight_layout();fig.savefig(out/f"{line}_training.png",dpi=160);plt.show()
     return model
 
 def evaluate_model(model,data,line,config,out,baseline):
+    out=out/f"{line}_{model.mode}"
     records=[]
     for split in ("val","test"):
         idx=split_indices(data,split);p,bce,z=predict(model,data,idx,config)
@@ -445,7 +463,7 @@ def evaluate_model(model,data,line,config,out,baseline):
         frame.to_csv(out/f"{line}_{split}_predictions.csv",index=False)
         metric=scores(frame["label_E2"],p)
         save_json(out/f"{line}_{split}_metrics.json",metric)
-        records.append(dict(cell_line=line,model="pathway_MLP",split=split,**{k:v for k,v in metric.items() if k!="confusion_matrix"}))
+        records.append(dict(cell_line=line,model="pathway_"+model.mode,split=split,**{k:v for k,v in metric.items() if k!="confusion_matrix"}))
         if split=="test":
             for modality in ("RNA","ATAC"):
                 old=pd.read_csv(baseline/f"{line}_{modality}_test_predictions.csv",dtype={"cell_id":str})
@@ -462,10 +480,12 @@ def evaluate_model(model,data,line,config,out,baseline):
     return pd.DataFrame(records)
 
 def pathway_ablation(model,data,line,config,out):
+    out=out/f"{line}_{model.mode}"
     idx=split_indices(data,"val"); y=data["manifest"].iloc[idx]["label_E2"].to_numpy()
     base,bce,logit=predict(model,data,idx,config);base_auc=roc_auc_score(y,base)
-    jobs=[(branch,i,str(p)) for i,p in enumerate(data["structure"]["pathways"]) for branch in ("PATHWAY","RNA","ATAC")]
-    jobs += [(branch,None,"ALL_PATHWAYS") for branch in ("RNA","ATAC")]
+    modalities=("RNA","ATAC") if model.mode=="RNA_ATAC" else (model.mode,)
+    jobs=[(branch,i,str(p)) for i,p in enumerate(data["structure"]["pathways"]) for branch in ("PATHWAY",*modalities)]
+    jobs += [(branch,None,"ALL_PATHWAYS") for branch in modalities]
     rows=[]
     for branch,index,name in tqdm(jobs,desc=f"{line} validation ablations"):
         prob,loss,z=predict(model,data,idx,config,(branch,index))
@@ -479,44 +499,120 @@ def pathway_ablation(model,data,line,config,out):
     ax.figure.tight_layout();ax.figure.savefig(out/f"{line}_ablation.png",dpi=160);plt.show()
     return result
 
+
 def gene_attribution(model,data,line,config,out,ablations):
-    """Conditional within-pathway integrated gradients; other pathway latents held fixed."""
+    """Adaptive Gauss-Legendre conditional IG; withhold rankings unless checks pass."""
+    root_out=out;out=out/f"{line}_{model.mode}"
     selected=ablations[ablations.branch.eq("PATHWAY") & ablations.AUROC_drop.gt(0)].nlargest(config["attribution_top_pathways"],"AUROC_drop")
-    if selected.empty:
-        print("No positive validation pathway ablation effects; skipping gene attribution.");return
-    rng=np.random.default_rng(config["seed"]); val=split_indices(data,"val")
+    rows=[];checks=[]
+    rng=np.random.default_rng(config["seed"]);val=split_indices(data,"val")
     labels=data["manifest"]["label_E2"].to_numpy()
     idx=np.concatenate([rng.choice(val[labels[val]==c],size=min(config["attribution_cells_per_class"],sum(labels[val]==c)),replace=False) for c in (0,1)])
     device=next(model.parameters()).device;model.eval()
-    r,a,y=batch(data,idx,device);context=model.fused(r,a).detach();rows=[];checks=[]
-    st=data["structure"]; steps=config["integrated_gradients_steps"]
-    for name in tqdm(selected.pathway,desc=f"{line} within-pathway attribution"):
+    r,a,y=batch(data,idx,device);context=model.fused(r,a).detach()
+    st=data["structure"]
+    modalities=("RNA","ATAC") if model.mode=="RNA_ATAC" else (model.mode,)
+    for name in tqdm(selected.pathway,desc=f"{line} {model.mode} checked IG"):
         pi=list(st["pathways"]).index(name);mask=torch.zeros_like(context);mask[:,pi,:]=1
-        accum=[torch.zeros_like(r),torch.zeros_like(a)]
-        for j in range(steps+1):
-            rr=(r*j/steps).detach().requires_grad_();aa=(a*j/steps).detach().requires_grad_()
-            mixed=context*(1-mask)+model.fused(rr,aa)*mask
-            grad=torch.autograd.grad(model.classify(mixed).sum(),(rr,aa))
-            for k in range(2):accum[k]+=grad[k].detach()*(.5 if j in (0,steps) else 1)/steps
-        attrs=[r*accum[0],a*accum[1]]
         with torch.no_grad():
             reference=context*(1-mask)+model.fused(torch.zeros_like(r),torch.zeros_like(a))*mask
-            delta=model.classify(context)-model.classify(reference)
+            delta=(model.classify(context)-model.classify(reference)).detach()
+        steps=config["integrated_gradients_steps"];previous=None;passed=False
+        while steps<=config["ig_max_steps"]:
+            nodes,weights=np.polynomial.legendre.leggauss(steps)
+            accum=[torch.zeros_like(r),torch.zeros_like(a)]
+            for alpha,weight in zip((nodes+1)/2,weights/2):
+                rr=(r*float(alpha)).detach().requires_grad_()
+                aa=(a*float(alpha)).detach().requires_grad_()
+                mixed=context*(1-mask)+model.fused(rr,aa)*mask
+                grads=torch.autograd.grad(model.classify(mixed).sum(),(rr,aa),allow_unused=True)
+                for k,grad in enumerate(grads):
+                    if grad is not None:accum[k]+=grad.detach()*float(weight)
+            attrs=[r*accum[0],a*accum[1]]
             error=attrs[0].sum(1)+attrs[1].sum(1)-delta
-        checks.append(dict(pathway=name,max_absolute_completeness_error=float(error.abs().max()),mean_absolute_completeness_error=float(error.abs().mean())))
-        for modality,attr in zip(("rna","atac"),attrs):
-            values=attr.detach().cpu().numpy();connected=st[modality+"_mask"][pi].astype(bool)
+            complete=bool(torch.all(error.abs()<=config["ig_absolute_tolerance"]+config["ig_relative_tolerance"]*delta.abs()))
+            finite=all(bool(torch.isfinite(x).all()) for x in attrs)
+            stable=False;max_change=None
+            if previous is not None:
+                change=sum((x-old).abs().sum(1) for x,old in zip(attrs,previous))
+                scale=sum(x.abs().sum(1) for x in attrs)
+                stable=bool(torch.all(change<=config["ig_absolute_tolerance"]+config["ig_stability_relative_tolerance"]*scale))
+                max_change=float(change.max())
+            passed=finite and complete and stable
+            checks.append(dict(pathway=name,steps=steps,passed=passed,complete=complete,stable=stable,finite=finite,
+                max_absolute_completeness_error=float(error.abs().max()),
+                mean_absolute_completeness_error=float(error.abs().mean()),
+                max_L1_attribution_change=max_change,max_absolute_target_logit_change=float(delta.abs().max())))
+            if passed:break
+            previous=[x.detach().clone() for x in attrs];steps*=2
+        if not passed:
+            print(f"{name}: IG checks failed; gene rankings and region candidates withheld.")
+            continue
+        for modality,attr in zip(("RNA","ATAC"),attrs):
+            if modality not in modalities:continue
+            values=attr.detach().cpu().numpy();key=modality.lower()
+            connected=st[key+"_mask"][pi].astype(bool)
             if np.any(~connected):assert np.max(np.abs(values[:,~connected]))<1e-5
             for gi in np.flatnonzero(connected):
-                rows.append(dict(pathway=name,modality=modality.upper(),gene=str(st[modality+"_genes"][gi]),
+                rows.append(dict(pathway=name,modality=modality,gene=str(st[key+"_genes"][gi]),
                     mean_absolute_IG=float(np.abs(values[:,gi]).mean()),mean_signed_IG=float(values[:,gi].mean()),
                     mean_IG_E2=float(values[labels[idx]==1,gi].mean()),mean_IG_Vehicle=float(values[labels[idx]==0,gi].mean())))
-    frame=pd.DataFrame(rows);frame.to_csv(out/f"{line}_validation_gene_attribution.csv",index=False)
-    pd.DataFrame(checks).to_csv(out/f"{line}_IG_completeness.csv",index=False)
+    columns=["pathway","modality","gene","mean_absolute_IG","mean_signed_IG","mean_IG_E2","mean_IG_Vehicle"]
+    frame=pd.DataFrame(rows,columns=columns)
+    frame.to_csv(out/f"{line}_validation_gene_attribution.csv",index=False)
+    diagnostics=pd.DataFrame(checks,columns=["pathway","steps","passed","complete","stable","finite","max_absolute_completeness_error","mean_absolute_completeness_error","max_L1_attribution_change","max_absolute_target_logit_change"])
+    diagnostics.to_csv(out/f"{line}_IG_completeness.csv",index=False)
     data["manifest"].iloc[idx].to_csv(out/f"{line}_attribution_cells.csv",index=False)
-    links=pd.read_csv(out/f"{line}_peak_gene_links.csv")
+    if checks:print(diagnostics.groupby("pathway").tail(1).to_string(index=False))
+    else:print("No positive pathway ablation effects; no gene attribution selected.")
     genes=frame[frame.modality.eq("ATAC")].sort_values("mean_absolute_IG",ascending=False).groupby("pathway").head(10)[["pathway","gene"]]
+    links=pd.read_csv(root_out/f"{line}_peak_gene_links.csv")
     candidates=genes.merge(links,on="gene")
     candidates["interpretation"]="candidate linked peak; not peak-level attribution"
     candidates.to_csv(out/f"{line}_candidate_regions.csv",index=False)
     return frame
+
+def summarize_model(model,data,line,out):
+    folder=out/f"{line}_{model.mode}"
+    gates=model.gates.values().detach().cpu().numpy()
+    info=dict(cell_line=line,mode=model.mode,pathways=len(gates),
+        exactly_zero=int((gates==0).sum()),nonzero=int((gates>0).sum()),
+        above_half=int((gates>.5).sum()),expected_open=float(model.gates.expected_open().sum().detach()),
+        parameters=sum(p.numel() for p in model.parameters()))
+    save_json(folder/"sparsity_summary.json",info)
+    print(info)
+    if info["nonzero"]>.8*info["pathways"]:
+        print("Most pathways remain open: this run has not achieved a compact pathway selection.")
+    return info
+
+def export_matched_review(out):
+    comparisons=[];sparsity=[];ablations=[]
+    for folder in sorted(out.iterdir()):
+        if not folder.is_dir():continue
+        summary=folder/"sparsity_summary.json"
+        if not summary.exists():continue
+        info=json.loads(summary.read_text());line=info["cell_line"];mode=info["mode"]
+        diagnostic_path=folder/f"{line}_IG_completeness.csv"
+        if diagnostic_path.exists():
+            diagnostics=pd.read_csv(diagnostic_path)
+            final_checks=diagnostics.groupby("pathway").tail(1)
+            info["IG_pathways_attempted"]=len(final_checks)
+            info["IG_pathways_passed"]=int(final_checks["passed"].sum())
+        sparsity.append(info)
+        comparisons.append(pd.read_csv(folder/"comparison.csv"))
+        frame=pd.read_csv(folder/f"{line}_validation_ablation.csv")
+        frame["cell_line"]=line;frame["mode"]=mode;ablations.append(frame)
+    metrics=pd.concat(comparisons,ignore_index=True).drop_duplicates(["cell_line","model","split"])
+    metrics.to_csv(out/"model_comparison.csv",index=False)
+    sparse=pd.DataFrame(sparsity);sparse.to_csv(out/"sparsity_comparison.csv",index=False)
+    ablation=pd.concat(ablations,ignore_index=True);ablation.to_csv(out/"all_validation_ablations.csv",index=False)
+    # Validation-only biological dependence comparison; this does not quantify nb08 interpretability.
+    for line in sparse.cell_line.unique():
+        sub=ablation[ablation.cell_line.eq(line)&ablation.branch.eq("PATHWAY")]
+        pivot=sub.pivot(index="pathway",columns="mode",values="AUROC_drop")
+        pivot.to_csv(out/f"{line}_matched_pathway_ablation.csv")
+        leading=pivot.max(axis=1).nlargest(15).index
+        ax=pivot.loc[leading].sort_values("RNA_ATAC").plot.barh(figsize=(10,7),title=f"{line}: matched validation pathway ablations")
+        ax.set_xlabel("AUROC drop when pathway is removed")
+        ax.figure.tight_layout();ax.figure.savefig(out/f"{line}_matched_ablation.png",dpi=160);plt.show()
+    return metrics,sparse

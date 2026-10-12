@@ -155,6 +155,6 @@ The notebook is intentionally unexecuted.
 
 ## Pathway-structured multimodal MLP
 Use [nb11](notebooks/nb11_pathway_multimodal_mlp.ipynb) for a PyTorch RNA+ATAC model with
-Hallmark-masked layers, sparse pathway gates, tqdm progress and resumable epoch checkpoints.
+matched RNA-only, ATAC-only and RNA+ATAC Hallmark-masked models, sparse pathway gates, tqdm progress and resumable epoch checkpoints.
 MCF7 and T47D remain separate and reuse the nb08 splits. See [the guide](PATHWAY_MULTIMODAL_MLP.md)
 for inputs, interpretation and limitations. The notebook is intentionally unexecuted.
