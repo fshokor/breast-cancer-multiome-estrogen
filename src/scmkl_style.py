@@ -228,7 +228,7 @@ def prepare_nb09(base, nb08_run_id, run_id, config, hallmark, refs, scan_config,
     save_json(out/"environment.json",{"python":sys.version,
         "packages":{name:importlib.metadata.version(name) for name in packages}})
     print("nb08 learning rate recorded:",baseline_config["learning_rate"])
-    print("nb09 fits one integrated model per line at fixed alpha ratio 0.1.")
+    print("nb09 fits RNA-only and RNA+ATAC per line at fixed alpha ratio 0.1.")
     return baseline,out,artifacts,manifests,baseline_config
 
 def ensure_references(base,refs,out):
@@ -518,13 +518,13 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
     if config != json.loads((out/"config.json").read_text()):
         raise ValueError("Configuration changed after setup. Start a new run.")
     if config["alpha_ratios"] != [0.1]:
-        raise ValueError("This notebook is configured for one fixed-alpha integrated fit per line.")
+        raise ValueError("This notebook is configured for one fixed-alpha fit per input mode and cell line.")
     y=manifest["label_E2"].to_numpy(dtype=int)
     train,val,test=[np.flatnonzero(manifest["split"].to_numpy()==part)
                     for part in ("train","validation","test")]
     block=2*config["rff_frequencies"]
     results=[]
-    for mode,modalities in (("RNA_ATAC",["RNA","ATAC"]),):
+    for mode,modalities in (("RNA_ATAC",["RNA","ATAC"]),("RNA",["RNA"])):
         tag=f"{line}_{mode}"
         if (out/f"{tag}_metrics.json").exists():
             print(f"{tag}: completed model already saved; skipping fit.")
@@ -565,7 +565,7 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
                 model=GroupLasso(groups=block,alpha=alpha_max*ratio,weights=None,
                     fit_intercept=True,tol=config["solver_tolerance"],
                     max_iter=config["solver_max_iter"],max_epochs=config["solver_max_epochs"],verbose=True)
-                print(f"{tag}: stage 2/4 — fitting one integrated model, alpha ratio {ratio}.",flush=True)
+                print(f"{tag}: stage 2/4 — fitting one grouped-kernel model, alpha ratio {ratio}.",flush=True)
                 fit_started=time.monotonic()
                 with warnings.catch_warnings(record=True) as caught:
                     warnings.simplefilter("always")
@@ -644,9 +644,9 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
         save_json(out/f"{tag}_live_status.json",{"stage":"completed",
                   "elapsed_seconds":time.monotonic()-stage_started,"fit_seconds":fit_seconds,
                   "solver_outer_iterations":solver_iterations,"eta_seconds":0})
-        finished=sum((out/f"{cell}_RNA_ATAC_metrics.json").exists() for cell in config["cell_lines"])
+        finished=sum((out/f"{cell}_{mode}_metrics.json").exists() for cell in config["cell_lines"] for mode in ("RNA_ATAC","RNA"))
         print(f"{tag}: finished in {duration_text(time.monotonic()-stage_started)}. "
-              f"Integrated models completed: {finished}/{len(config['cell_lines'])}.",flush=True)
+              f"Models completed: {finished}/{2*len(config['cell_lines'])}.",flush=True)
         results.append(row)
         del xtrain,best
         gc.collect()
@@ -655,7 +655,7 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
 def export_comparison(base,baseline,out,manifests,config):
     rows=[]
     for line in config["cell_lines"]:
-        for mode in ("RNA_ATAC",):
+        for mode in ("RNA_ATAC","RNA"):
             rows.append(json.loads((out/f"{line}_{mode}_metrics.json").read_text()))
         expected=manifests[line].loc[manifests[line]["split"]=="test",["cell_id","label_E2"]].reset_index(drop=True)
         for mode in ("RNA","ATAC"):
@@ -665,7 +665,7 @@ def export_comparison(base,baseline,out,manifests,config):
             shutil.copy2(baseline/f"{line}_{mode}_test_predictions.csv",out/f"nb08_{line}_{mode}_predictions.csv")
             rows.append({"cell_line":line,"model":"MLP_nb08","modality":mode,
                 **score_metrics(pred["label_E2"].to_numpy(),pred["probability_E2"].to_numpy(),.5)})
-        for mode in ("RNA_ATAC",):
+        for mode in ("RNA_ATAC","RNA"):
             pred=pd.read_csv(out/f"{line}_{mode}_test_predictions.csv",dtype={"cell_id":str})
             if not pred[["cell_id","label_E2"]].equals(expected):
                 raise ValueError("nb09 test order/labels mismatch.")
@@ -681,6 +681,15 @@ def export_comparison(base,baseline,out,manifests,config):
                 "AUROC_difference_joint_minus_reference":joint.AUROC-row.AUROC,
                 "AP_difference_joint_minus_reference":joint.average_precision-row.average_precision})
     pd.DataFrame(deltas).to_csv(out/"integration_differences.csv",index=False)
+    rna_differences=[]
+    for line in config["cell_lines"]:
+        subset=summary[summary.cell_line==line]
+        structured=subset[(subset.model=="scMKL_style")&(subset.modality=="RNA")].iloc[0]
+        baseline_row=subset[(subset.model=="MLP_nb08")&(subset.modality=="RNA")].iloc[0]
+        rna_differences.append(dict(cell_line=line,
+            AUROC_RNA_kernel_minus_nb08_RNA=float(structured.AUROC-baseline_row.AUROC),
+            AP_RNA_kernel_minus_nb08_RNA=float(structured.average_precision-baseline_row.average_precision)))
+    pd.DataFrame(rna_differences).to_csv(out/"rna_baseline_differences.csv",index=False)
     summary["label"]=summary["model"]+" "+summary["modality"]
     fig,axes=plt.subplots(1,2,figsize=(13,4))
     for ax,line in zip(axes,config["cell_lines"]):
@@ -751,3 +760,62 @@ def reuse_kernel(base,out,artifacts,manifest,line,modality,config,cached_run_id)
         print(f"{line} {modality}: reusing completed kernels from {old_out.name}.")
         return path,table
     return None
+
+
+def review_rna_pathways(paths,tables,manifest,line,out,artifacts,config):
+    """Exact additive RNA kernel contributions and validation-only leave-pathway-out analysis."""
+    val=np.flatnonzero(manifest["split"].to_numpy()=="validation")
+    y=manifest.iloc[val]["label_E2"].to_numpy()
+    block=2*config["rff_frequencies"]
+    array=np.load(paths["RNA"],mmap_mode="r")
+    table=tables["RNA"].reset_index(drop=True)
+    reviews=[]
+    for mode in ("RNA","RNA_ATAC"):
+        tag=f"{line}_{mode}"
+        with np.load(artifacts/f"{tag}_model.npz",allow_pickle=False) as ck:
+            coef=ck["coef"].copy();intercept=float(ck["intercept"])
+            modalities=ck["modalities"].tolist()
+        expected=["RNA"] if mode=="RNA" else ["RNA","ATAC"]
+        if modalities!=expected:raise ValueError("Unexpected model modality order.")
+        spec=json.loads((artifacts/f"{tag}_model_spec.json").read_text())
+        if spec["group_order"][:len(table)]!=table["group"].tolist():
+            raise ValueError("RNA group order does not match the saved model.")
+        base=score_rows(paths,modalities,val,coef,intercept)
+        saved=pd.read_csv(out/f"{tag}_validation_predictions.csv",dtype={"cell_id":str})
+        if list(saved.cell_id)!=manifest.iloc[val].cell_id.tolist():
+            raise ValueError("Validation cell order mismatch.")
+        if not np.allclose(base,saved.decision_score_E2,atol=1e-5,rtol=1e-5):
+            raise ValueError("Saved model/kernel predictions do not match.")
+        base_auc=roc_auc_score(y,base);base_ap=average_precision_score(y,base)
+        contributions=np.empty((len(val),len(table)),dtype=np.float64)
+        for gi,row in table.iterrows():
+            begin=gi*block;end=begin+block
+            contribution=np.asarray(array[val,begin:end])@coef[begin:end]
+            contributions[:,gi]=contribution
+            removed=base-contribution
+            norm=float(np.linalg.norm(coef[begin:end]))
+            reviews.append(dict(cell_line=line,mode=mode,pathway=row["group"],
+                selected=norm>1e-8,coefficient_group_norm=norm,
+                validation_AUROC=float(base_auc),
+                ablated_AUROC=float(roc_auc_score(y,removed)),
+                AUROC_drop=float(base_auc-roc_auc_score(y,removed)),
+                AP_drop=float(base_ap-average_precision_score(y,removed)),
+                mean_absolute_score_contribution=float(np.abs(contribution).mean()),
+                mean_score_contribution_E2=float(contribution[y==1].mean()),
+                mean_score_contribution_Vehicle=float(contribution[y==0].mean())))
+        if mode=="RNA" and not np.allclose(intercept+contributions.sum(1),base,atol=1e-5,rtol=1e-5):
+            raise ValueError("RNA pathway contributions do not reconstruct model scores.")
+        frame=pd.DataFrame(contributions,columns=table["group"].tolist())
+        frame.insert(0,"label_E2",y);frame.insert(0,"cell_id",manifest.iloc[val].cell_id.to_numpy())
+        frame.to_csv(out/f"{tag}_validation_pathway_contributions.csv",index=False)
+        print(f"{tag}: {sum(np.linalg.norm(coef[:len(table)*block].reshape(-1,block),axis=1)>1e-8)}/{len(table)} RNA pathways selected.")
+    result=pd.DataFrame(reviews)
+    result.to_csv(out/f"{line}_RNA_pathway_ablation.csv",index=False)
+    pivot=result.pivot(index="pathway",columns="mode",values="AUROC_drop")
+    pivot.to_csv(out/f"{line}_RNA_pathway_ablation_comparison.csv")
+    names=pivot.max(axis=1).nlargest(15).index
+    ax=pivot.loc[names].sort_values("RNA").plot.barh(figsize=(10,7),title=f"{line}: validation RNA pathway ablation")
+    ax.set_xlabel("AUROC drop after removing a pathway contribution")
+    ax.figure.tight_layout();ax.figure.savefig(out/f"{line}_RNA_pathway_ablation.png",dpi=150)
+    plt.show();plt.close(ax.figure)
+    return result

@@ -144,3 +144,29 @@ Per-model solver_progress.jsonl and live_status.json files are saved in the
 results folder. Checkpoint metadata and metrics record fit_seconds and
 solver_outer_iterations when available. No algorithm settings change.
 Progress logs do not checkpoint in-progress solver coefficients.
+
+## RNA-only extension
+The revised nb09 adds one fixed-alpha RNA-only grouped-kernel model per cell line.
+The default RESUME_RUN_ID is 20261012T114858_335840Z, preserving and skipping the completed
+integrated fits. Keep that run, its model artifacts and all kernel folders referenced by cache
+pointers. The complete executed notebook is archived before this revision.
+Use a new run ID only to intentionally fit both modes from scratch. Hyperparameters are unchanged;
+each mode uses ratio 0.1 of its own training-only alpha_max, so absolute alpha may differ.
+
+RNA-only reuses the same training-selected features, Hallmark groups, frozen references,
+random-feature kernels and cell splits. Existing integrated model artifacts are required for
+the new interpretation review; result tables alone do not suffice.
+The extension's embedded source is saved separately from the original run implementation.
+
+Interpretation exports selected pathway norms, exact per-cell validation RNA contributions,
+leave-pathway-out validation AUROC/AP changes and RNA-only versus integrated comparisons.
+Removing a contribution requires no retraining. RNA-only contributions plus the intercept
+must reconstruct the decision score, and model predictions must match the saved validation file.
+Signed contributions are regression decision-score terms, not activity, causality or gene weights.
+Correlated/overlapping pathways can substitute for one another. No gene-level attribution or
+multi-seed stability is claimed. Comparisons to nb08 assess prediction; superior explanation
+fidelity would require equivalent explanation checks for nb08.
+
+The results ZIP contains four models per cell line: two nb08 MLP baselines, RNA-only kernels,
+and integrated kernels. The previous nb10 report covers its original models only.
+This extension was authored without executing notebook cells, feature construction or fitting.

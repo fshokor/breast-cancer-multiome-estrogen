@@ -11,13 +11,13 @@ refs=json.loads((ROOT/"configs/motif_references.json").read_text())
 scan=json.loads((ROOT/"configs/motif_analysis.json").read_text())
 md,code=nbf.v4.new_markdown_cell,nbf.v4.new_code_cell
 cells=[
-md("""# nb09 — scMKL-style RNA + ATAC integration
+md("""# nb09 — scMKL-style RNA-only and RNA+ATAC pathway models
 
 **Prepared for you to run in Colab. This notebook has not been executed.**
 
-Train **one RNA + ATAC grouped-kernel model for MCF7 and one for T47D**.
-There is no unimodal kernel training and no hyperparameter search.
-Compare the two integrated models with the saved nb08 MLP baselines. Reuse the exact nb08 training, validation and
+Compare **RNA-only and RNA+ATAC grouped-kernel models for MCF7 and T47D**.
+The default resumes your completed run and adds just two RNA-only fits; completed integrated fits are skipped.
+No hyperparameter search is performed. Compare these models with the saved nb08 MLP baselines. Reuse the exact nb08 training, validation and
 test cells, input data and training-selected features. E2 is always the positive class.
 
 This is an **scMKL-style implementation**, not the official scMKL package and not an exact
@@ -130,15 +130,15 @@ else:
               str(here.parent if here.name=="notebooks" else here)))
 
 NB08_RUN_ID="20261011T103750_408739Z"
-# Leave blank for the first run of this revised notebook.
-# After a disconnect, set this to the NEW integrated run ID printed below.
-RESUME_RUN_ID=""
-# Reuse completed kernels from the interrupted run; keep that folder on Drive.
-CACHED_KERNEL_RUN_ID="20261012T085524_321769Z"
+# Resume the completed run to preserve and skip its integrated fits.
+# Leave blank only if intentionally starting a new run (which fits both modes).
+RESUME_RUN_ID="20261012T114858_335840Z"
+# Preserve this run and any earlier kernel folders referenced by its cache pointers.
+CACHED_KERNEL_RUN_ID="20261012T114858_335840Z"
 RUN_ID=RESUME_RUN_ID or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
 print("Project:",BASE)
 print("nb08 comparison run:",NB08_RUN_ID)
-print("New nb09 run:",RUN_ID)
+print("nb09 run:",RUN_ID)
 """),
 md("""## Settings and frozen references
 Choose settings before setup. Do not change them after looking at test results.
@@ -171,7 +171,7 @@ Reference checksums must match the frozen project versions.
 """),
 code("ensure_references(BASE,REFERENCES,OUTPUT)"),
 ]
-cells[11].source += "\n_ = (OUTPUT/'scmkl_style_source.py').write_text("+repr(source)+")\n"
+cells[11].source += "\n_ = (OUTPUT/'scmkl_style_rna_extension_source.py').write_text("+repr(source)+")\n"
 for line in config["cell_lines"]:
     cells.extend([
         md(f"""## {line}: build biological feature groups and kernels
@@ -182,21 +182,23 @@ Missing kernels are built by annotating selected peaks and constructing random-f
              f'    BASE,BASELINE,OUTPUT,ARTIFACTS,MANIFESTS["{line}"],"{line}",\n'
              f'    NB08_CONFIG,CONFIG,HALLMARK,REFERENCES,SCAN_CONFIG,cached_run_id=CACHED_KERNEL_RUN_ID)\n'
              f'display(pd.DataFrame([{{"modality":m,"kernels":len(t)}} for m,t in {line}_TABLES.items()]))'),
-        md(f"""## {line}: train one integrated RNA + ATAC model
-One fit, fixed alpha ratio 0.1. Validation is diagnostic; test evaluation requires convergence.
+        md(f"""## {line}: train RNA-only plus integrated RNA + ATAC models
+One fit per missing input mode, fixed alpha ratio 0.1. Validation is diagnostic; test evaluation requires convergence.\nThe absolute alpha is derived separately from each mode\'s training-only alpha_max and is saved.
 The fit checkpoint is saved immediately after the solver returns, before evaluation and plotting.
 Completed models/checkpoints are reused when resuming the same new run; a fit interrupted before
-the solver returns must restart. No RNA-only or ATAC-only models are trained.
+the solver returns must restart. RNA-only is fitted using the same RNA kernels. No ATAC-only kernel model is trained.
 """),
         code(f'display(fit_group_models({line}_PATHS,{line}_TABLES,MANIFESTS["{line}"],\n'
-             f'                         "{line}",OUTPUT,ARTIFACTS,CONFIG))')
+             f'                         "{line}",OUTPUT,ARTIFACTS,CONFIG))'),
+        md("### RNA pathway interpretation\nSelected group norms are unsigned. The table below removes each RNA pathway contribution on validation cells without retraining. Positive AUROC drop indicates dependence of this fitted model; redundant pathways can have small individual effects. Signed contributions are uncalibrated prediction scores, not gene regulation or pathway activity."),
+        code(f'RNA_REVIEW = review_rna_pathways({line}_PATHS,{line}_TABLES,MANIFESTS["{line}"],"{line}",OUTPUT,ARTIFACTS,CONFIG)\ndisplay(RNA_REVIEW[RNA_REVIEW.selected].sort_values(["mode","AUROC_drop"],ascending=[True,False]))')
     ])
 cells.extend([
 md("""## Compare with nb08 and export
-The table contains three models per cell line: the two saved nb08 MLP baselines and joint RNA + ATAC. Test IDs/labels must match exactly. Difference tables report joint-model
+The table contains four models per cell line: the two saved nb08 MLP baselines, RNA-only kernels and joint RNA + ATAC. Test IDs/labels must match exactly. Difference tables report joint-model
 AUROC/AP minus each reference model; these are descriptive differences, not significance tests.
 
-**Send back the generated results ZIP.** It includes selected regularization, solver status,
+RNA-only versus nb08 RNA differences and RNA-only versus joint pathway-ablation tables are also exported.\nThis establishes pathway-level predictive dependence, not causal mechanisms or superior interpretability\nover nb08 without a matched explanation audit. Gaussian kernel coefficients cannot be read as gene weights.\nOnly one seed/split is evaluated; no selection-stability claim is made. Existing nb10 outputs do not\ninclude the newly added RNA-only model; use this notebook's updated comparison.\n\n**Send back the generated results ZIP.** It includes selected regularization, solver status,
 group coverage/weights, predictions, plots, input/split checksums and settings.
 Large kernel arrays, random maps and coefficient checkpoints remain in data/processed/nb09/RUN_ID/.
 
@@ -210,7 +212,7 @@ print("Results archive:",RESULTS_ZIP)
 """),
 md("""### Training progress and timing
 Training prints stages 1/4 through 4/4: feature loading, solver fitting, evaluation and saving.
-A completed-model counter shows 0/2, 1/2 or 2/2 as applicable. Native solver lines are timestamped
+A completed-model counter counts up to four models across both cell lines. Native solver lines are timestamped
 with elapsed time and report **outer iteration**, objective and **duality gap** (a convergence measure,
 not prediction loss or AUROC). Outer iteration numbers from celer start at zero.
 
@@ -227,12 +229,12 @@ Motif scanning and kernel construction show count-based progress and a rough rem
 Each model saves solver_progress.jsonl and live_status.json files in the run's results directory;
 fit duration and final outer-iteration count are also saved with its checkpoint and metrics.
 Logs are observational, not intermediate model checkpoints. A disconnect during a solver call still
-requires that fit to restart. This logging update does not alter model settings or fit additional models.
+requires that fit to restart. Existing hyperparameters are unchanged; RNA-only adds one fit per cell line.
 
 ### Optional download
 The ZIP is already saved on Drive. Turn on the switch below to download it through Colab.
 A changed configuration requires a new run. Kernel arrays and models are not included in the ZIP.
-For a disconnect, reopen this notebook, set RESUME_RUN_ID to the NEW integrated run ID and run all.
+For a disconnect, reopen this notebook, set RESUME_RUN_ID to the run ID and run all.
 Keep the old cached-kernel run folder: the new model may reference its saved feature maps.
 """),
 code("""DOWNLOAD_RESULTS=False
