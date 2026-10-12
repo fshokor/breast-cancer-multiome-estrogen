@@ -32,6 +32,10 @@ assert 'for mode,modalities in (("RNA_ATAC",["RNA","ATAC"]),):' in fit_source
 assert sum(isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr=="fit"
            for n in ast.walk(functions["fit_group_models"]))==1
 assert "fit_checkpoint.npz" in fit_source
+assert "verbose=True" in fit_source
+assert "with solver_progress(out,tag,config):" in fit_source
+assert "fit_seconds" in fit_source and "solver_outer_iterations" in fit_source
+assert "solver_progress" in functions and "counted_progress" in functions
 assert config["rff_frequencies"]==32
 assert any(c.cell_type=="code" and 'NB08_RUN_ID="20261011T103750_408739Z"' in c.source for c in nb.cells)
 setup=[c for c in nb.cells if c.cell_type=="code" and "BASELINE, OUTPUT, ARTIFACTS" in c.source]

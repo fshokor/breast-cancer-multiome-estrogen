@@ -12,6 +12,8 @@ import sys
 import time
 import urllib.request
 import warnings
+import threading
+from contextlib import contextmanager, redirect_stdout
 import anndata as ad
 import h5py
 import numpy as np
@@ -263,14 +265,16 @@ def define_groups(base,line,modality,features,hallmark,refs,scan_config,out,conf
         scanner,_=build_scanner(motifs,scan_config)
         presence=np.zeros((len(names),len(motifs)),dtype=bool)
         boundary=[]
+        scan_started=scan_update=time.monotonic()
         for i,peak in enumerate(names):
             if peak in sequences:
                 common,extended=scan_union_sequence(scanner,sequences[peak],len(motifs))
                 presence[i]=common & extended
                 boundary.append({"peak":peak,"stable_motif_count":int(presence[i].sum()),
                                  "boundary_sensitive_motif_count":int((extended & ~common).sum())})
-            if (i+1)%500==0:
-                print(f"{line}: annotated {i+1}/{len(names)} peaks",flush=True)
+            if time.monotonic()-scan_update>=30 or i+1==len(names):
+                counted_progress(out,f"{line}_motif_scan",scan_started,i+1,len(names))
+                scan_update=time.monotonic()
         pd.DataFrame(boundary).to_csv(out/f"{line}_motif_coordinate_audit.csv",index=False)
         groups={m["motif_id"]+"__"+m["motif_name"]:np.flatnonzero(presence[:,j])
                 for j,m in enumerate(motifs)}
@@ -306,6 +310,8 @@ def rff_design(x,center,scale,groups,manifest,line,modality,config,artifacts,out
     directory=artifacts/f"{line}_{modality}_maps"
     directory.mkdir(exist_ok=True)
     report=[]
+    kernel_started=last_update=time.monotonic()
+    print(f"{line} {modality}: constructing {len(groups)} kernels.",flush=True)
     for j,(name,ix) in enumerate(groups.items()):
         seed=int.from_bytes(hashlib.sha256(f"{config['seed']}|{line}|{name}".encode()).digest()[:4],"little")
         rng=np.random.default_rng(seed)
@@ -335,7 +341,9 @@ def rff_design(x,center,scale,groups,manifest,line,modality,config,artifacts,out
             rff_scale=np.array(norm),sigma=np.array(sigma))
         report.append({"group":name,"modality":modality,"feature_count":len(ix),
                        "sigma":sigma,"rff_scale":norm,"map_file":f"group_{j:04d}.npz"})
-        if (j+1)%100==0: print(f"{line} {modality}: {j+1}/{len(groups)} kernels",flush=True)
+        if time.monotonic()-last_update>=30 or j+1==len(groups):
+            counted_progress(out,f"{line}_{modality}_kernels",kernel_started,j+1,len(groups))
+            last_update=time.monotonic()
     z.flush()
     table=pd.DataFrame(report)
     table.to_csv(out/f"{line}_{modality}_kernels.csv",index=False)
@@ -417,6 +425,95 @@ def plot_model(y,score,search,weights,path,title):
     plt.show()
     plt.close(fig)
 
+
+def duration_text(seconds):
+    seconds=max(0,int(seconds))
+    hours,remainder=divmod(seconds,3600)
+    minutes,seconds=divmod(remainder,60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+def counted_progress(out,tag,started,done,total):
+    elapsed=time.monotonic()-started
+    remaining=elapsed*(total-done)/done if done else None
+    message=f"{tag}: {done}/{total} ({100*done/total:.1f}%), elapsed {duration_text(elapsed)}"
+    if remaining is not None:
+        message+=f", rough remaining {duration_text(remaining)}"
+    print(message,flush=True)
+    save_json(out/f"{tag}_progress.json",{"stage":tag,"completed":done,"total":total,
+        "elapsed_seconds":elapsed,"rough_remaining_seconds":remaining,
+        "note":"Rate-based estimate; groups/peaks vary in cost."})
+
+@contextmanager
+def solver_progress(out,tag,config,every_seconds=30):
+    """Capture native iteration logs; timing is observational and never changes fitting."""
+    started=time.monotonic()
+    original=sys.stdout
+    stop=threading.Event()
+    lock=threading.RLock()
+    state={"stage":"fitting","outer_iteration_0based":None,"duality_gap":None,
+           "inner_epoch_if_reported":None,"outer_iteration_limit":config["solver_max_iter"],
+           "inner_epochs_per_subproblem_limit":config["solver_max_epochs"],
+           "eta_seconds":None,"attempt":str(time.time_ns())}
+    log=(out/f"{tag}_solver_progress.jsonl").open("a",buffering=1)
+    def emit(message):
+        with lock:
+            event={**state,"elapsed_seconds":time.monotonic()-started,
+                   "unix_time":time.time(),"message":message}
+            original.write(f"[{tag} | {duration_text(event['elapsed_seconds'])}] {message}\n")
+            original.flush()
+            log.write(json.dumps(event,allow_nan=False)+"\n")
+            log.flush()
+            save_json(out/f"{tag}_live_status.json",event)
+    class SolverOutput:
+        def __init__(self):
+            self.pending=""
+        def write(self,text):
+            with lock:
+                self.pending+=text
+                while "\n" in self.pending:
+                    line,self.pending=self.pending.split("\n",1)
+                    if not line.strip():continue
+                    found=re.search(r"Iter\s+(\d+)",line)
+                    if found:state["outer_iteration_0based"]=int(found.group(1))
+                    found=re.search(r"(?:Exit )?Epoch\s+(\d+)",line,re.I)
+                    if found:state["inner_epoch_if_reported"]=int(found.group(1))
+                    found=re.search(r"gap:?\s+([0-9.eE+-]+)",line)
+                    if found:
+                        value=float(found.group(1))
+                        if np.isfinite(value):state["duality_gap"]=value
+                    emit(line)
+            return len(text)
+        def flush(self):
+            original.flush()
+        def finish(self):
+            if self.pending:
+                self.write("\n")
+    def heartbeat():
+        while not stop.wait(every_seconds):
+            iteration=state["outer_iteration_0based"]
+            label="waiting for first solver update" if iteration is None else f"last reported outer iteration {iteration} (0-based)"
+            emit(f"Still fitting; {label}. Remaining time unknown.")
+    emit(f"Fit started: max {config['solver_max_iter']} outer iterations; "
+         f"up to {config['solver_max_epochs']} inner epochs per subproblem. "
+         "These are limits, not a completion percentage. ETA unavailable.")
+    worker=threading.Thread(target=heartbeat,daemon=True)
+    sink=SolverOutput()
+    worker.start()
+    try:
+        with redirect_stdout(sink):
+            yield state
+    except BaseException:
+        state["stage"]="interrupted_or_failed"
+        raise
+    else:
+        state["stage"]="fit_returned"
+    finally:
+        stop.set()
+        worker.join()
+        sink.finish()
+        emit("Solver call ended: "+state["stage"])
+        log.close()
+
 def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
     if config != json.loads((out/"config.json").read_text()):
         raise ValueError("Configuration changed after setup. Start a new run.")
@@ -433,7 +530,10 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
             print(f"{tag}: completed model already saved; skipping fit.")
             results.append(json.loads((out/f"{tag}_metrics.json").read_text()))
             continue
+        stage_started=time.monotonic()
+        print(f"{tag}: stage 1/4 — loading saved features for the training cells.",flush=True)
         xtrain=design_rows(paths,modalities,train)
+        print(f"{tag}: feature loading took {duration_text(time.monotonic()-stage_started)}.",flush=True)
         target=(2*y[train]-1).astype(np.float32)
         correlation=xtrain.T@(target-target.mean())/len(train)
         alpha_max=float(np.linalg.norm(correlation.reshape(-1,block),axis=1).max())
@@ -445,6 +545,8 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
         for ratio in config["alpha_ratios"]:
             checkpoint=artifacts/f"{tag}_fit_checkpoint.npz"
             checkpoint_meta=artifacts/f"{tag}_fit_checkpoint.json"
+            fit_seconds=None
+            solver_iterations=None
             if checkpoint.exists() and checkpoint_meta.exists():
                 saved=json.loads(checkpoint_meta.read_text())
                 if (saved["config_sha256"] != sha256(out/"config.json") or
@@ -456,14 +558,24 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
                     intercept=float(ck["intercept"])
                 converged=bool(saved["converged"])
                 warning_text=saved["solver_warnings"]
+                fit_seconds=saved.get("fit_seconds")
+                solver_iterations=saved.get("solver_outer_iterations")
                 print(f"{tag}: reusing saved fit checkpoint; no retraining.")
             else:
                 model=GroupLasso(groups=block,alpha=alpha_max*ratio,weights=None,
                     fit_intercept=True,tol=config["solver_tolerance"],
-                    max_iter=config["solver_max_iter"],max_epochs=config["solver_max_epochs"])
+                    max_iter=config["solver_max_iter"],max_epochs=config["solver_max_epochs"],verbose=True)
+                print(f"{tag}: stage 2/4 — fitting one integrated model, alpha ratio {ratio}.",flush=True)
+                fit_started=time.monotonic()
                 with warnings.catch_warnings(record=True) as caught:
                     warnings.simplefilter("always")
-                    model.fit(xtrain,target)
+                    with solver_progress(out,tag,config):
+                        model.fit(xtrain,target)
+                fit_seconds=time.monotonic()-fit_started
+                reported=getattr(model,"n_iter_",None)
+                solver_iterations=int(np.asarray(reported).ravel()[0]) if reported is not None else None
+                print(f"{tag}: fit returned in {duration_text(fit_seconds)}; "
+                      f"reported outer iterations={solver_iterations}. Saving checkpoint.",flush=True)
                 converged=not any(issubclass(w.category,ConvergenceWarning) for w in caught)
                 coefficients=np.asarray(model.coef_).copy()
                 intercept=float(model.intercept_)
@@ -473,17 +585,20 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
                 temp.replace(checkpoint)
                 save_json(checkpoint_meta,{"converged":converged,"solver_warnings":warning_text,
                     "alpha":alpha_max*ratio,"config_sha256":sha256(out/"config.json"),
-                    "split_sha256":sha256(out/f"{line}_splits.csv")})
+                    "split_sha256":sha256(out/f"{line}_splits.csv"),
+                    "fit_seconds":fit_seconds,"solver_outer_iterations":solver_iterations})
                 del model
             if not np.isfinite(coefficients).all() or not np.isfinite(intercept):
                 raise FloatingPointError("Invalid group-lasso coefficients.")
+            print(f"{tag}: stage 3/4 — validation and test evaluation (no additional fit).",flush=True)
             pv=score_rows(paths,modalities,val,coefficients,intercept)
             vm=score_metrics(y[val],pv)
             selected=int(np.sum(np.linalg.norm(coefficients.reshape(-1,block),axis=1)>1e-8))
             record={"alpha_ratio":ratio,"alpha":alpha_max*ratio,"alpha_max":alpha_max,
                 "validation_AUROC":vm["AUROC"],"validation_average_precision":vm["average_precision"],
                 "selected_groups":selected,"converged":converged,
-                "solver_warnings":warning_text}
+                "solver_warnings":warning_text,"fit_seconds":fit_seconds,
+                "solver_outer_iterations":solver_iterations}
             records.append(record)
             pd.DataFrame(records).to_csv(out/f"{tag}_validation_search.csv",index=False)
             print(f"{tag}: alpha ratio={ratio:g}, val AUROC={vm['AUROC']:.5f}, "
@@ -521,8 +636,17 @@ def fit_group_models(paths,tables,manifest,line,out,artifacts,config):
              "training_AUROC":float(roc_auc_score(y[train],train_score)),
              "validation_AUROC":best["record"]["validation_AUROC"],
              "seconds":time.monotonic()-started,**score_metrics(y[test],pt)}
+        print(f"{tag}: stage 4/4 — saving diagnostics and metrics.",flush=True)
+        row["fit_seconds"]=fit_seconds
+        row["solver_outer_iterations"]=solver_iterations
         plot_model(y[test],pt,pd.DataFrame(records),kernel_table,out/f"{tag}_diagnostics.png",tag)
         save_json(out/f"{tag}_metrics.json",row)
+        save_json(out/f"{tag}_live_status.json",{"stage":"completed",
+                  "elapsed_seconds":time.monotonic()-stage_started,"fit_seconds":fit_seconds,
+                  "solver_outer_iterations":solver_iterations,"eta_seconds":0})
+        finished=sum((out/f"{cell}_RNA_ATAC_metrics.json").exists() for cell in config["cell_lines"])
+        print(f"{tag}: finished in {duration_text(time.monotonic()-stage_started)}. "
+              f"Integrated models completed: {finished}/{len(config['cell_lines'])}.",flush=True)
         results.append(row)
         del xtrain,best
         gc.collect()

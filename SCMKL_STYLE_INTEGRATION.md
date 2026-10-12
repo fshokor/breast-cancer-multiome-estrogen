@@ -125,3 +125,22 @@ that modality, while completed kernels are retained.
 nb10 was updated to expect three models per cell line: two saved MLPs and one
 integrated model. This comparison changes both model family and input modalities,
 so it does not isolate the effect of adding ATAC alone.
+
+
+## Progress tracking
+
+The notebook now prints four model stages, timestamped native solver output,
+best-effort 30-second elapsed-time messages, and completed models out of two.
+Celer reports outer iterations and the duality gap; this is optimization progress,
+not neural-network epochs or validation accuracy. The outer/inner limits are
+upper bounds and are not percentages complete. Inner epoch counts are stored
+only if the installed solver prints them; no total or remaining fit time is known.
+Native work that holds Python's interpreter lock can delay heartbeat output.
+
+Motif scanning and kernel construction show completed counts, elapsed time and
+a rough rate-based ETA. Counts vary in cost, so estimates are approximate.
+
+Per-model solver_progress.jsonl and live_status.json files are saved in the
+results folder. Checkpoint metadata and metrics record fit_seconds and
+solver_outer_iterations when available. No algorithm settings change.
+Progress logs do not checkpoint in-progress solver coefficients.

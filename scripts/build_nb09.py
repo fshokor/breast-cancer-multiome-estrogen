@@ -208,7 +208,28 @@ display(comparison[["cell_line","model","modality","AUROC","average_precision",
                     "balanced_accuracy","F1_E2"]])
 print("Results archive:",RESULTS_ZIP)
 """),
-md("""### Optional download
+md("""### Training progress and timing
+Training prints stages 1/4 through 4/4: feature loading, solver fitting, evaluation and saving.
+A completed-model counter shows 0/2, 1/2 or 2/2 as applicable. Native solver lines are timestamped
+with elapsed time and report **outer iteration**, objective and **duality gap** (a convergence measure,
+not prediction loss or AUROC). Outer iteration numbers from celer start at zero.
+
+The solver has a limit of 200 outer iterations and 50,000 inner coordinate-descent epochs per
+subproblem. These are upper bounds, not a schedule. The installed celer build may not expose
+inner epochs; they are recorded only if the solver actually prints them. No artificial epoch count
+is invented. A final outer-iteration count is saved when exposed by the estimator.
+
+During fitting, a best-effort elapsed-time message is emitted every 30 seconds. Native work holding
+Python's interpreter lock or slow Drive writes can delay updates. **Solver time remaining is unknown**:
+iteration duration and convergence vary, so iteration/max-iteration is not a completion percentage.
+Motif scanning and kernel construction show count-based progress and a rough remaining-time estimate.
+
+Each model saves solver_progress.jsonl and live_status.json files in the run's results directory;
+fit duration and final outer-iteration count are also saved with its checkpoint and metrics.
+Logs are observational, not intermediate model checkpoints. A disconnect during a solver call still
+requires that fit to restart. This logging update does not alter model settings or fit additional models.
+
+### Optional download
 The ZIP is already saved on Drive. Turn on the switch below to download it through Colab.
 A changed configuration requires a new run. Kernel arrays and models are not included in the ZIP.
 For a disconnect, reopen this notebook, set RESUME_RUN_ID to the NEW integrated run ID and run all.
