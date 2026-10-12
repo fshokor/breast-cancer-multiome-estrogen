@@ -50,7 +50,7 @@ the final filename. Move a corrupt archive aside before rerunning.
 Raw data and environments are ignored by Git.
 
 ## Colab + Google Drive
-Upload the available nb00–nb08 notebooks to Colab and run in order.
+Upload the available nb00–nb09 notebooks to Colab and run in order.
 The notebooks contain generated copies of the canonical scripts, so a remote repository
 and manual source-file uploads are unnecessary. They mount Drive and use:
 
@@ -87,7 +87,7 @@ After editing canonical source, regenerate notebooks:
 | nb06 | RNA–ATAC pathway comparison in both enrichment directions |
 | nb07 | Matched-background motif enrichment, both ATAC directions and sensitivity |
 | nb08 | RNA-only and ATAC-only MLP baselines; user-run Colab training |
-| nb09 (future) | RNA + ATAC integration using nb08 cell splits |
+| nb09 | scMKL-style RNA + ATAC integration and unimodal controls; user-run Colab |
 | nb10 (future) | Additional multimodal model comparison (optional) |
 | nb11 (future) | MultiVI latent representation |
 | nb12 (future) | Model comparison |
@@ -95,7 +95,7 @@ After editing canonical source, regenerate notebooks:
 | nb14 (future) | MCF7 → T47D transfer |
 | nb15 (future) | Final biological summary |
 
-nb00 through nb08 are available; nb08 is intentionally unexecuted. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
+nb00 through nb09 are available. nb08 contains the user's Colab results; nb09 is intentionally unexecuted. nb02 uses Scanpy for the published RNA QC thresholds and preprocessing, preserves
 paired ATAC cells, and adds separate RNA PCA, Leiden clustering and UMAP per cell line.
 See [QC_PREPROCESSING.md](QC_PREPROCESSING.md) for parameter provenance and results.
 scMKL is not installed. nb03 ranks descriptive cluster markers. nb04 adds exploratory treatment DEG and GSEA without biological replicate mapping. nb07 adds exploratory motif analysis; nb08 prepares unimodal MLP training for the user's Colab run.
@@ -138,5 +138,11 @@ See [the motif guide](MOTIF_ANALYSIS.md) for sequence resources, statistics and 
 
 ## Unimodal MLP prediction
 Use [nb08](notebooks/nb08_unimodal_mlp.ipynb) for separate RNA-only and ATAC-only MLPs in both cell lines.
-The notebook has not been executed. See [the modeling guide](UNIMODAL_MLP.md) for settings,
+The saved notebook includes the user's Colab run (learning rate 0.00001). See [the modeling guide](UNIMODAL_MLP.md) for the original settings,
 Colab instructions, paper differences, outputs and the nb09 integration handoff.
+
+## scMKL-style predictive integration
+Use [nb09](notebooks/nb09_scmkl_style_integration.ipynb) for grouped Gaussian kernels and group lasso.
+It reuses nb08 splits and compares RNA, ATAC and integration, alongside the saved MLP results.
+This is an adapted implementation, not an exact scMKL reproduction. It has not been executed.
+See [the integration modeling guide](SCMKL_STYLE_INTEGRATION.md) for Colab requirements and methods.

@@ -1,0 +1,24 @@
+{
+  "cell_lines": [
+    "MCF7",
+    "T47D"
+  ],
+  "seed": 42,
+  "rff_frequencies": 32,
+  "min_group_features": 5,
+  "bandwidth_sample_cells": 256,
+  "alpha_ratios": [
+    1.0,
+    0.3,
+    0.1,
+    0.03,
+    0.01
+  ],
+  "solver_tolerance": 0.0001,
+  "solver_max_iter": 200,
+  "solver_max_epochs": 50000,
+  "max_design_gib": 3.0,
+  "coordinate_policy": "motif present under both coordinate hypotheses",
+  "model_name": "scMKL-style Gaussian RFF + group lasso",
+  "author_source_commit": "d6448b73895ab62b31f78213f6e4fed910bce4c4"
+}
