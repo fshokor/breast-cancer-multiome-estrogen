@@ -1,0 +1,33 @@
+{
+  "cell_lines": [
+    "MCF7",
+    "T47D"
+  ],
+  "seed": 42,
+  "pathway_width": 4,
+  "head_width": 32,
+  "dropout": 0.1,
+  "learning_rate": 0.0003,
+  "gate_learning_rate": 0.003,
+  "weight_decay": 0.01,
+  "gate_sigma": 0.5,
+  "gate_lambda": 0.001,
+  "gate_warmup_epochs": 5,
+  "gate_ramp_end_epoch": 15,
+  "min_epochs": 20,
+  "max_epochs": 100,
+  "patience": 10,
+  "min_delta": 0.0001,
+  "batch_size": 128,
+  "gradient_clip": 5.0,
+  "min_train_detected": 3,
+  "min_genes_per_pathway_per_modality": 3,
+  "promoter_upstream_bp": 2000,
+  "promoter_downstream_bp": 500,
+  "include_gene_body": true,
+  "minimum_variance": 1e-08,
+  "attribution_cells_per_class": 16,
+  "attribution_top_pathways": 3,
+  "integrated_gradients_steps": 32,
+  "preprocessing_version": 1
+}
