@@ -1,17 +1,17 @@
 """Generate nb10 without running notebook cells."""
 from pathlib import Path
 import nbformat as nbf
+import textwrap
 ROOT=Path(__file__).resolve().parents[1]
 source=(ROOT/"src/model_comparison.py").read_text()
+transfer_source=(ROOT/"src/cross_line_transfer.py").read_text()
 md,code=nbf.v4.new_markdown_cell,nbf.v4.new_code_cell
 cells=[
 md("""# nb10 — Model comparison and biological interpretation
 
 **Prepared in advance and intentionally unexecuted. Run this after nb09 finishes.**
 
-This notebook reviews saved outputs only: **it does not train, tune, rescore raw data or load model
-checkpoints**. Compare the RNA/ATAC MLP baselines with the integrated
-scMKL-style model, separately in MCF7 and T47D.
+This notebook reviews saved outputs and adds **frozen cross-cell-line treatment prediction**.\nIt never trains or tunes models. Transfer loads saved checkpoints and transforms raw target inputs\nusing source-model preprocessing. Compare nb08 MLPs, nb09 RNA-only/integrated kernels,\nand both completed nb11 pathway-model versions.
 
 Questions:
 - Does integration improve AUROC, average precision and classification errors?
@@ -23,14 +23,13 @@ No conclusions about nb09 are assumed. Tables, figures and the report are create
 
 ### Required inputs
 The complete nb09 results directory under results/tables/nb09/RUN_ID/.
-It already includes nb08 test predictions, configuration and the split handoff, so neither model
-weights nor raw RNA/ATAC files are needed. If using the nb09 results ZIP, extract its contents into
+It already includes nb08 test predictions, configuration and the split handoff, so model\nweights and raw inputs are unnecessary for the original review sections. The transfer section\nrequires full nb08/nb09/nb11 checkpoints, nb09 random-feature maps (including referenced older run\nfolders), nb11 structures/peak-gene links, all four nb02 H5AD files and the original results folders.\nResults ZIPs alone do not contain model checkpoints. If using the nb09 results ZIP, extract its contents into
 that run directory first.
 
 ### Optional biological context
 Existing nb04 Hallmark GSEA, nb06 pathway summaries and nb07 motif enrichment tables.
 Missing context is reported explicitly and does not stop the performance comparison.
-This is a lightweight **CPU** notebook; no GPU or sequence-reference download is required.
+The original review is lightweight CPU work. Frozen neural inference can use a GPU; CPU also\nworks. Transfer needs more RAM/time. No sequence scan or reference download is required.
 """),
 md("""## How to interpret the review
 
@@ -86,7 +85,7 @@ else:
 
 # Leave blank only if exactly one completed nb09 results folder exists.
 # If several runs exist, set the exact folder name to review.
-NB09_RUN_ID=""
+NB09_RUN_ID="20261012T114858_335840Z"
 RUN_ID=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
 print("Project:",BASE)
 print("Available nb09 folders:",[p.name for p in (BASE/"results"/"tables"/"nb09").glob("*") if p.is_dir()])
@@ -113,7 +112,7 @@ display(GAPS)
 display(DIFFERENCES)
 """),
 md("""## Performance figures
-ROC and precision–recall curves compare the three models. Generalization panels show each line’s integrated model. Positive integration AUROC/AP differences mean a higher point estimate;
+ROC and precision–recall curves compare the four models. Generalization panels show each line’s integrated model. Positive integration AUROC/AP differences mean a higher point estimate;
 they do not establish statistical significance. Paired error tables identify corrections and new errors.
 """),
 code("performance_plots(METRICS,GAPS,PREDICTIONS,OUTPUT)"),
@@ -137,13 +136,64 @@ code("""CONTEXT_STATUS = biological_context(BASE,OUTPUT,INPUTS,ALIASES)
 display(CONTEXT_STATUS)
 print("Context tables saved under:",OUTPUT)
 """),
+md("""## Cross-cell-line treatment prediction — frozen models
+**Question:** can an MCF7-trained model predict E2 versus Vehicle in T47D, and vice versa?
+This predicts treatment across cell lines, not cell-line identity.
+
+Default: **16 source→target cases**. nb08 RNA/ATAC; nb09 RNA/RNA+ATAC; nb11 v1 RNA+ATAC;
+nb11 v2 RNA/ATAC/RNA+ATAC, each in both directions. Collapsed v2 ATAC models remain negative
+controls. Explicit run IDs are below; remove a historical run only if deliberately excluding it.
+
+Use the opposite line's existing nb08 **test cells only**, identical across model families.
+Keep source feature order, centering/scaling, kernel frequencies/normalization, pathway masks,
+peak-gene assignments and depth reference. No target statistics fit a transform, and no target
+results select checkpoints or thresholds. Target-native scores use the separately trained model
+from the same family/run on exactly those target test cells.
+
+Each checkpoint must first reproduce its saved source-line test predictions within absolute/relative
+tolerance 1e-4; otherwise transfer is withheld. Missing target RNA features use the source transformed
+mean, with a predeclared 5% coverage limit and a full missing-feature list. Required ATAC peaks must
+exist, and nb11 requires identical assay peak universes. No motif scan or target-specific mapping.
+
+tqdm tracks evaluations and active kernels. Missing artifacts and verification failures are reported
+separately, never assigned AUROC 0. The first pass hashes raw inputs and checkpoints and may take time.
+Shared libraries, prior test inspection and absent biological replicates limit generalization claims.
+"""),
+code("""RUN_CROSS_LINE_TRANSFER = True
+NB08_TRANSFER_RUN_ID = HANDOFF["run_id"]
+NB11_TRANSFER_RUNS = [
+    {"run_id": "20261012T173612_419824Z", "version": 1},
+    {"run_id": "20261012T180159_920277Z", "version": 2},
+]
+MAX_MISSING_RNA_FRACTION = 0.05  # Fixed before inspecting transfer results.
+if RUN_CROSS_LINE_TRANSFER:
+    import importlib.util, subprocess, sys
+    packages = {"torch":"torch>=2.6,<3", "anndata":"anndata>=0.10,<0.13",
+                "h5py":"h5py>=3.10,<4", "scipy":"scipy>=1.11,<2", "tqdm":"tqdm>=4.66,<5"}
+    missing = [spec for module,spec in packages.items() if importlib.util.find_spec(module) is None]
+    if missing: subprocess.check_call([sys.executable,"-m","pip","install","-q",*missing])
+"""),
+md("### Embedded frozen-inference implementation\nArchitecture definitions match the completed notebook versions. No model fitting is implemented."),
+code("if RUN_CROSS_LINE_TRANSFER:\n"+textwrap.indent(transfer_source,"    ")),
+code("""if RUN_CROSS_LINE_TRANSFER:
+    _ = (OUTPUT/"cross_line_transfer_source.py").write_text(TRANSFER_SOURCE_TEXT)
+    TRANSFER_RESULTS = run_cross_line_transfer(
+        BASE, OUTPUT, NB08_TRANSFER_RUN_ID, SOURCE.name, NB11_TRANSFER_RUNS,
+        max_missing_fraction=MAX_MISSING_RNA_FRACTION)
+    display(TRANSFER_RESULTS)
+    failed = TRANSFER_RESULTS[TRANSFER_RESULTS["status"].ne("complete")]
+    if len(failed):
+        print("Some evaluations are incomplete. Restore the listed artifacts or resolve the diagnostic.")
+        display(failed[["model","source","target","error"]])
+else:
+    print("Cross-cell-line transfer disabled; saved-output review only.")
+""".replace("TRANSFER_SOURCE_TEXT",repr(transfer_source))),
 md("""## Generate the review report and export
 The report summarizes verified metrics, integration differences and selected groups, with limitations.
 It does not automatically recommend tuning a model based on its test score.
 
 **Send back the results ZIP** or comparison_report.md with the figures.
-Possible next experiments are predefined repeated splits and cross-cell-line transfer; neither is
-performed in this notebook.
+Cross-cell-line results, diagnostics and predictions are included in the archive when enabled.\nPredefined repeated splits and independent biological validation remain future work.
 """),
 code("""RESULTS_ZIP = export_review(BASE,SOURCE,OUTPUT,INPUTS,METRICS,GAPS,DIFFERENCES,WEIGHTS,CONTEXT_STATUS)
 from IPython.display import Markdown

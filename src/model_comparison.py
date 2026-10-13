@@ -12,7 +12,7 @@ from sklearn.metrics import (roc_auc_score, average_precision_score, accuracy_sc
     balanced_accuracy_score, f1_score, confusion_matrix, roc_curve, precision_recall_curve)
 
 LINES=("MCF7","T47D")
-MODES=("RNA_ATAC",)
+MODES=("RNA_ATAC","RNA")
 
 def sha256(path):
     h=hashlib.sha256()
@@ -80,7 +80,7 @@ def prepare_review(base,run_id,nb09_run_id):
         "nb09_run_id":source.name,"nb08_run_id":handoff["run_id"],
         "nb08_learning_rate":baseline["learning_rate"],"nb09_config":config,
         "positive_class":"E2","confidence_intervals":"not estimated",
-        "scope":"Fixed-alpha integrated-model review. No fitting, tuning, bootstrap or prediction."})
+        "scope":"Saved-output kernel-model review plus separately configured frozen cross-line inference. No fitting or tuning."})
     json_save(out/"environment.json",{"python":sys.version,
         "packages":{p:importlib.metadata.version(p) for p in
                     ("numpy","pandas","matplotlib","scikit-learn")}})
@@ -192,7 +192,7 @@ def review_predictions(source,out,inputs,handoff):
     for line in LINES:
         joint=predictions[(line,"scMKL_style","RNA_ATAC")]
         joint_met=calculate_metrics(joint)
-        for family,mode in (("MLP_nb08","RNA"),("MLP_nb08","ATAC")):
+        for family,mode in (("MLP_nb08","RNA"),("MLP_nb08","ATAC"),("scMKL_style","RNA")):
             other=predictions[(line,family,mode)]
             other_met=calculate_metrics(other)
             jc=joint.predicted.to_numpy()==joint.label_E2.to_numpy()
@@ -230,7 +230,7 @@ def performance_plots(metrics,gaps,predictions,out):
         axes[0].legend(fontsize=7)
         g=gaps[gaps.cell_line==line].set_index("modality")
         g[["training_AUROC","validation_AUROC","test_AUROC"]].plot.bar(ax=axes[2])
-        axes[2].set(ylim=(0,1.02),ylabel="AUROC",title="Integrated-model generalization gaps")
+        axes[2].set(ylim=(0,1.02),ylabel="AUROC",title="Kernel-model generalization gaps")
         axes[2].tick_params(axis="x",rotation=30)
         fig.tight_layout()
         fig.savefig(out/f"{line}_performance.png",dpi=160)
@@ -376,7 +376,7 @@ def export_review(base,source,out,inputs,metrics,gaps,differences,weights,status
         "- Cross-line overlap is descriptive and does not measure repeat-split stability or transfer performance.",
         "- Test scores have already been inspected; any test-guided tuning requires independent confirmation.",
         "- Biological replicate IDs are unavailable, and treatment/library confounding remains possible.",
-        "- No confidence intervals, significance tests, retraining or cross-line transfer were performed.",
+        "- No confidence intervals, significance tests or retraining were performed. Cross-line transfer, when enabled, is reported separately below.",
         "",
         "## Next decisions",
         "",
@@ -388,6 +388,11 @@ def export_review(base,source,out,inputs,metrics,gaps,differences,weights,status
         f"Optional biological-context files available: {int((status.status=='loaded_descriptive_context').sum())}"
         f"/{len(status)}.",
     ]
+    transfer_report=out/"cross_cell_line"/"transfer_report.md"
+    if transfer_report.exists():
+        lines+=["","---","",transfer_report.read_text()]
+    else:
+        lines+=["","Cross-cell-line transfer was not run in this review."]
     (out/"comparison_report.md").write_text("\n".join(lines)+"\n")
     exports=Path(base)/"results"/"exports"
     exports.mkdir(parents=True,exist_ok=True)
